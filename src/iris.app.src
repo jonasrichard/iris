@@ -1,0 +1,15 @@
+{application, iris,
+ [
+  {description, "A generic chat application"},
+  {vsn, "0.1"},
+  {registered, []},
+  {applications, [
+      kernel,
+      stdlib,
+      crypto,
+      lager,
+      cowboy
+  ]},
+  {mod, {iris_app, []}},
+  {env, []}
+ ]}.
