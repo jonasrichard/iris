@@ -18,13 +18,22 @@ init(_Args) ->
              shutdown => brutal_kill,
              type => worker,
              modules => []},
+           #{id => iris_db,
+             start => {iris_db, start_link, []},
+             restart => permanent,
+             shutdown => brutal_kill,
+             type => worker,
+             modules => []},
            start_cowboy()
           ]}
          }.
 
 start_cowboy() ->
     Dispatch = cowboy_router:compile([
-        {'_', [{'_', iris_handler, []}]}
+        {'_', [
+            {"/api/[...]", iris_handler, []},
+            {"/ws", iris_ws_handler, []}
+        ]}
     ]),
     Args = [
         iris_http_listener,

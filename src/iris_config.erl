@@ -1,7 +1,8 @@
 -module(iris_config).
 -behaviour(gen_server).
 
--export([start_link/0]).
+-export([start_link/0,
+         get_value/3]).
 
 -export([init/1,
          handle_info/2,
@@ -12,6 +13,19 @@
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+get_value(Section, Property, Default) ->
+    case application:get_env(iris, Section) of
+        undefined ->
+            Default;
+        {ok, Val} ->
+            case lists:keyfind(Property, 1, Val) of
+                false ->
+                    Default;
+                {_, Val2} ->
+                    Val2
+            end
+    end.
 
 init(_) ->
     {ok, #{}}.

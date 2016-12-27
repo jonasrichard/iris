@@ -1,0 +1,6 @@
+
+-record(user, {
+          username,
+          password
+         }).
+
