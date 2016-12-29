@@ -10,12 +10,13 @@ init(Req, State) ->
     {cowboy_websocket, Req, State}.
 
 websocket_init(State) ->
-    {ok, State}.
+    {ok, Pid} = iris_client:start_link(self()),
+    {ok, State#{client => Pid}}.
 
 websocket_handle(Frame = {text, Json}, State) ->
     case process_json(Json) of
-        {ok, Data} ->
-            % handle incoming message
+        {ok, Message} ->
+            do_handle_message(Message, State),
             {reply, {text, <<"ok">>}, State};
         {error, _} ->
             {ok, State}
@@ -36,4 +37,7 @@ process_json(Json) ->
         error:badarg ->
             {error, <<"Error in JSON">>}
     end.
+
+do_handle_message(Message, #{client := Client}) ->
+    gen_fsm:send_event(Client, Message).
 

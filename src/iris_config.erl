@@ -2,6 +2,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0,
+         get_value/2,
          get_value/3]).
 
 -export([init/1,
@@ -11,8 +12,17 @@
          terminate/2,
          code_change/3]).
 
+%% TODO in the future, let the user reload the configs
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+get_value(Section, Default) ->
+    case application:get_env(iris, Section) of
+        undefined ->
+            Default;
+        {ok, Val} ->
+            Val
+    end.
 
 get_value(Section, Property, Default) ->
     case application:get_env(iris, Section) of

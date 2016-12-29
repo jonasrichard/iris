@@ -12,21 +12,20 @@ init(_Args) ->
     {ok, {#{startegy => one_for_one,
             intensity => 5,
             period => 1000},
-          [#{id => iris_config,
-             start => {iris_config, start_link, []},
-             restart => permanent,
-             shutdown => brutal_kill,
-             type => worker,
-             modules => []},
-           #{id => iris_db,
-             start => {iris_db, start_link, []},
-             restart => permanent,
-             shutdown => brutal_kill,
-             type => worker,
-             modules => []},
+          [child(iris_config, []),
+           child(iris_db, []),
+           child(iris_loader, []),
            start_cowboy()
           ]}
          }.
+
+child(Module, Args) ->
+    #{id => Module,
+      start => {Module, start_link, []},
+      restart => permanent,
+      shutdown => brutal_kill,
+      type => worker,
+      modules => []}.
 
 start_cowboy() ->
     Dispatch = cowboy_router:compile([

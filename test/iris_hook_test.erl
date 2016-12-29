@@ -15,6 +15,8 @@ add_hook_test_() ->
               ?_assertEqual([[b, a, c]], Result)
       end}}.
 
+%% TODO: I don't like this. Hook callbacks should have one
+%% parameter only.
 fun1(List) ->
     {ok, [[a | List]]}.
 

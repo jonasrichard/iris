@@ -18,7 +18,7 @@ start_link() ->
 create_table(Name, Record, Replicated, Key, Index) ->
     gen_server:call(?MODULE, {create_table, Name, Record, Replicated, Key, Index}).
 
-init(#{backend := Backend} = State) ->
+init([#{backend := Backend} = State]) ->
     Nodes = [node() | nodes()],
     ok = Backend:init(Nodes),
     {ok, State#{nodes => Nodes, node => node()}}.

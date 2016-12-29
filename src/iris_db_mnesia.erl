@@ -6,8 +6,8 @@
 -include("iris.hrl").
 
 init(Nodes) ->
-    ok = mnesia:create_schema(Nodes),
     ok = mnesia:start(),
+    {ok, _ExtraNodes} = mnesia:change_config(extra_db_nodes, nodes()),
     ok.
 
 create_table(Name, RecordInfo, Replicated, Persisted, _Index, Env) ->
