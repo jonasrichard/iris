@@ -21,7 +21,7 @@ init(_Args) ->
 
 child(Module, Args) ->
     #{id => Module,
-      start => {Module, start_link, []},
+      start => {Module, start_link, Args},
       restart => permanent,
       shutdown => brutal_kill,
       type => worker,
@@ -31,7 +31,7 @@ start_cowboy() ->
     Dispatch = cowboy_router:compile([
         {'_', [
             {"/api/[...]", iris_handler, []},
-            {"/ws", iris_ws_handler, []}
+            {"/ws", iris_ws_handler, #{}}
         ]}
     ]),
     Args = [

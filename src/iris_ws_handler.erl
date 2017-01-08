@@ -13,13 +13,13 @@ websocket_init(State) ->
     {ok, Pid} = iris_client:start_link(self()),
     {ok, State#{client => Pid}}.
 
-websocket_handle(Frame = {text, Json}, State) ->
+websocket_handle(_Frame = {text, Json}, State) ->
     case process_json(Json) of
         {ok, Message} ->
             do_handle_message(Message, State),
             {reply, {text, <<"ok">>}, State};
         {error, _} ->
-            {ok, State}
+            {reply, {text, <<"error">>}, State}
     end;
 websocket_handle(_Frame, State) ->
     {ok, State}.
