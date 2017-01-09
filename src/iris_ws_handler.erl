@@ -24,6 +24,8 @@ websocket_handle(_Frame = {text, Json}, State) ->
 websocket_handle(_Frame, State) ->
     {ok, State}.
 
+websocket_info({text, _Text} = Frame, State) ->
+    {reply, Frame, State};
 websocket_info(_Info, State) ->
     % {reply, {text, <<"ok">>}, State}
     % {stop, State}

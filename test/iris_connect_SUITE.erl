@@ -10,6 +10,6 @@ all() ->
 connect(_) ->
     application:ensure_all_started(gun),
     {ok, Conn} = iris_tc:start_link(),
-    iris_tc:send(Conn, #{type => "message"}),
-    {ok, Frame} = iris_tc:wait_for_frame(Conn),
+    {ok, Frame} = iris_tc:wait_for_json(Conn),
+    #{<<"type">> := <<"hello">>} = Frame,
     ct:pal("Frame: ~p", [Frame]).

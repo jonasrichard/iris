@@ -3,6 +3,7 @@
 
 -export([start_link/0,
          wait_for_frame/1,
+         wait_for_json/1,
          send/2]).
 
 -export([init/1,
@@ -22,6 +23,14 @@ wait_for_frame(Pid) ->
             {ok, Frame}
     after 5000 ->
               {error, timeout}
+    end.
+
+wait_for_json(Pid) ->
+    case wait_for_frame(Pid) of
+        {ok, {text, Text}} ->
+            {ok, jsx:decode(Text, [return_maps])};
+        Other ->
+            Other
     end.
 
 send(Pid, Frame) ->
