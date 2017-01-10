@@ -1,8 +1,9 @@
 -module(iris_client).
 -behaviour(gen_fsm).
 
--export([start_link/1,
-         connected/2]).
+-export([start_link/2,
+         connected/2,
+         established/2]).
 
 -export([init/1,
          code_change/4,
@@ -12,38 +13,66 @@
 %%% API functions
 %%%
 
-start_link(SocketPid) ->
-    gen_fsm:start_link(?MODULE, [SocketPid], []).
+start_link(websocket, SocketPid) ->
+    Arg = #{format => json,
+            protocol => websocket,
+            socket => SocketPid},
+    gen_fsm:start_link(?MODULE, [Arg], []).
 
 %%%
 %%% gen_fsm callbacks
 %%%
 
-init([SocketPid]) ->
+init([InitState]) ->
     %% TODO: trap exit because websocket is linked with the fsm
-    StateData = #{socket => SocketPid},
-    send(StateData, #{type => hello}),
-    {ok, connected, StateData}.
+    send(#{type => hello}, InitState),
+    {ok, connected, InitState}.
 
-code_change(_OldVsn, StateName, StateData, Extra) ->
-    {ok, StateName, StateData}.
+code_change(_OldVsn, Name, State, _Extra) ->
+    {ok, Name, State}.
 
-terminate(_Reason, _StateName, _StateData) ->
+terminate(_Reason, _Name, _State) ->
     ok.
 
 %%%
 %%% State implementation
 %%%
 
-connected(Event, StateData) ->
-    {next_state, connected, StateData}.
+connected(Event, State) ->
+    case Event of
+        #{type := auth} ->
+            #{user := User, pass := Pass} = Event,
+            case iris_hook:run(authenticate, [User, Pass]) of
+                {ok, Token} ->
+                    State2 = State#{
+                               user => User,
+                               token => Token},
+                    {next_state, established, State2};
+                {error, _Reason} ->
+                    reply(error, [<<"Authentication error">>], State),
+                    {next_state, established, State}
+            end;
+        _ ->
+            {next_state, connected, State}
+    end.
+
+established(_Event, State) ->
+    {next_state, established, State}.
 
 %%%
 %%% Internal functions
 %%%
 
-send(#{socket := WS} = StateData, Msg) ->
-    %% TODO: generic conversion, and generic send api
-    %% hide the fact that socket is websocket
+send(Msg, #{protocol := websocket, socket := WS} = _State) ->
     Json = jsx:encode(Msg),
     WS ! {text, Json}.
+
+reply(error, Args, #{format := json} = State) ->
+    Response =
+        case Args of
+            [Desc] ->
+                iris_msg_json:error(Desc);
+            [Desc, Code] ->
+                iris_msg_json:error(Desc, Code)
+        end,
+    send(Response, State).

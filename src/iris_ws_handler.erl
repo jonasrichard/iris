@@ -10,7 +10,7 @@ init(Req, State) ->
     {cowboy_websocket, Req, State}.
 
 websocket_init(State) ->
-    {ok, Pid} = iris_client:start_link(self()),
+    {ok, Pid} = iris_client:start_link(websocket, self()),
     {ok, State#{client => Pid}}.
 
 websocket_handle(_Frame = {text, Json}, State) ->
