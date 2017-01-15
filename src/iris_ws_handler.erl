@@ -6,12 +6,17 @@
          websocket_handle/2,
          websocket_info/2]).
 
-init(Req, State) ->
-    {cowboy_websocket, Req, State}.
+-record(state, {
+          client
+         }).
+
+%% The State parameter is a map, we can build the state record from their value.
+init(Req, _State) ->
+    {cowboy_websocket, Req, #state{}}.
 
 websocket_init(State) ->
     {ok, Pid} = iris_client:start_link(websocket, self()),
-    {ok, State#{client => Pid}}.
+    {ok, State#state{client = Pid}}.
 
 websocket_handle(_Frame = {text, Json}, State) ->
     case process_json(Json) of
@@ -40,6 +45,6 @@ process_json(Json) ->
             {error, <<"Error in JSON">>}
     end.
 
-do_handle_message(Message, #{client := Client}) ->
+do_handle_message(Message, #state{client = Client}) ->
     gen_fsm:send_event(Client, Message).
 

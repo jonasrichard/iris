@@ -12,7 +12,8 @@ init(_Args) ->
     {ok, {#{startegy => one_for_one,
             intensity => 5,
             period => 1000},
-          [child(iris_config, []),
+          [child(iris_hook, []),
+           child(iris_config, []),
            child(iris_db, []),
            child(iris_loader, []),
            start_cowboy()

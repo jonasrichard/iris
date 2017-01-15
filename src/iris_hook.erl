@@ -1,9 +1,17 @@
 -module(iris_hook).
+-behaviour(gen_server).
 
--export([init/1,
+-export([start_link/0,
          add/4,
          delete/3,
          run/2]).
+
+-export([init/1,
+         handle_call/3,
+         handle_cast/2,
+         handle_info/2,
+         terminate/2,
+         code_change/3]).
 
 -record(hook, {
           name,
@@ -16,10 +24,43 @@
           priority
          }).
 
-init(Opts) ->
-    ets:new(hooks, [public, named_table, {keypos, #hook.name}]).
+-record(state, {
+          hooks
+         }).
 
+%%%
+%%% API functions
+%%%
+
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+-spec add(atom(), atom(), atom(), integer()) -> any().
 add(Hook, Module, Function, Priority) ->
+    gen_server:call(?MODULE, {add, Hook, Module, Function, Priority}).
+
+-spec delete(atom(), atom(), atom()) -> any().
+delete(Hook, Module, Function) ->
+    gen_server:call(?MODULE, {delete, Hook, Module, Function}).
+
+-spec run(atom(), any()) -> ok | {ok, Result::term()} | {error, Reason::term()}.
+run(Hook, Args) ->
+    case ets:lookup(hooks, Hook) of
+        [] ->
+            ok;
+        [#hook{callbacks = Cbs}] ->
+            run_callbacks(Cbs, Args)
+    end.
+
+%%%
+%%% gen_server callbacks
+%%%
+
+init(_) ->
+    Tab = ets:new(hooks, [public, named_table, {keypos, #hook.name}]),
+    {ok, #state{hooks = Tab}}.
+
+handle_call({add, Hook, Module, Function, Priority}, _From, State) ->
     NewCb = #callback{module = Module,
                       function = Function,
                       priority = Priority},
@@ -30,9 +71,9 @@ add(Hook, Module, Function, Priority) ->
         [#hook{callbacks = Cb} = H] ->
             NewH = H#hook{callbacks = sort_by_priority([NewCb | Cb])},
             ets:insert(hooks, NewH)
-    end.
-
-delete(Hook, Module, Function) ->
+    end,
+    {reply, ok, State};
+handle_call({delete, Hook, Module, Function}, _From, State) ->
     case ets:lookup(hooks, Hook) of
         [] ->
             ok;
@@ -42,15 +83,27 @@ delete(Hook, Module, Function) ->
                               M =/= Module orelse F =/= Function
                       end, Cb),
             ets:insert(hooks, H#hook{callbacks = NewCb})
-    end.
+    end,
+    {reply, ok, State};
+handle_call(_Other, _From, State) ->
+    {reply, {error, unknown_message}, State}.
 
-run(Hook, Args) ->
-    case ets:lookup(hooks, Hook) of
-        [] ->
-            Args;
-        [#hook{callbacks = Cbs}] ->
-            run_callbacks(Cbs, Args)
-    end.
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+terminate(_Reason, _State) ->
+    ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%%%
+%%% Internal functions
+%%%
 
 sort_by_priority(Callbacks) ->
     lists:sort(fun(C1, C2) ->
@@ -58,14 +111,20 @@ sort_by_priority(Callbacks) ->
                end, Callbacks).
 
 run_callbacks([], Args) ->
-    Args;
+    ok;
 run_callbacks([#callback{module = M, function = F} | Rest], Args) ->
-    case erlang:apply(M, F, Args) of
+    try erlang:apply(M, F, Args) of
         ok ->
             run_callbacks(Rest, Args);
         {ok, NewArgs} ->
             run_callbacks(Rest, NewArgs);
+        {stop, Result} ->
+            {ok, Result};
         stop ->
-            ok
+            ok;
+        {error, _Reason} = Error ->
+            Error
+    catch
+        Exception:Desc ->
+            {error, {Exception, Desc}}
     end.
-
