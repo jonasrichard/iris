@@ -88,7 +88,6 @@ handle_call({delete, Hook, Module, Function}, _From, State) ->
 handle_call(_Other, _From, State) ->
     {reply, {error, unknown_message}, State}.
 
-
 handle_info(_Info, State) ->
     {noreply, State}.
 

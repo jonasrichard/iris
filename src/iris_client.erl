@@ -60,15 +60,25 @@ connected(Event, State) ->
                 {ok, Token} ->
                     State2 = State#state{user = User,
                                          token = Token},
+                    send(#{message => <<"Authenticated">>}, State), 
                     {next_state, established, State2};
                 {error, _Reason} ->
                     reply(error, [<<"Authentication error">>], State),
-                    {next_state, established, State}
+                    {next_state, connected, State}
             end;
         _ ->
             {next_state, connected, State}
     end.
 
+established(#{<<"type">> := <<"request">>} = Event, State) ->
+    case iris_req:handle(Event) of
+        {ok, Result} ->
+            reply(response, Result, State),
+            {next_state, established, State};
+        {error, Reason} ->
+            reply(error, Reason, State),
+            {next_state, established, State}
+    end;            
 established(_Event, State) ->
     {next_state, established, State}.
 

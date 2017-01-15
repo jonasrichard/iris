@@ -14,6 +14,7 @@ init(_Args) ->
             period => 1000},
           [child(iris_hook, []),
            child(iris_config, []),
+           child(iris_req, []),
            child(iris_db, []),
            child(iris_loader, []),
            start_cowboy()
