@@ -13,7 +13,7 @@
 start_link(Opts) ->
     proc_lib:start_link(?MODULE, init, [Opts, self()]).
 
-init(Opts, Parent) ->
+init(_Opts, Parent) ->
     iris_db:create_table(user, record_info(fields, user), true, undefined, undefined),
     iris_hook:add(authenticate, ?MODULE, authenticate, 10),
     proc_lib:init_ack(Parent, {ok, self()}),
@@ -35,7 +35,7 @@ authenticate(User, Pass) ->
             ok
     end.
 
-handle_message(From, To, Message) ->
+handle_message(_From, _To, Message) ->
     try
         User = maps:get(?USERNAME, Message),
         Pass = maps:get(?PASSWORD, Message),

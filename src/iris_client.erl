@@ -10,20 +10,23 @@
          terminate/3]).
 
 -record(state, {
-          socket,
-          format,
-          protocol,
+          socket,           %% pid of the sender/receiver
+          protocol,         %% {json, websocket} | raw
           user,
           token
          }).
+
+%% Message macros
+-define(TYPE, <<"type">>).
 
 %%%
 %%% API functions
 %%%
 
 start_link(websocket, SocketPid) ->
-    Arg = {json, websocket, SocketPid},
-    gen_fsm:start_link(?MODULE, [Arg], []).
+    gen_fsm:start_link(?MODULE, [{json, websocket, SocketPid}], []);
+start_link(raw, Pid) ->
+    gen_fsm:start_link(?MODULE, [{raw, Pid}], []).
 
 %%%
 %%% gen_fsm callbacks
@@ -33,13 +36,16 @@ init([Arg]) ->
     %% TODO: trap exit because websocket is linked with the fsm
     case Arg of
         {json, websocket, Pid} ->
-            State = #state{socket = Pid,
-                           format = json,
-                           protocol = websocket},
+            State = #state{socket = Pid, protocol = {json, websocket}},
             send(#{type => hello}, State),
             {ok, connected, State};
-        Other ->
-            {stop, "Unknown init state"}
+        {raw, Pid} ->
+            State = #state{socket = Pid, protocol = raw},
+            send(#{type => hello}, State),
+            {ok, connected, State};
+        _Other ->
+            lager:error("Unknown init args: ~p", [Arg]),
+            {stop, unknown_init_args}
     end.
 
 code_change(_OldVsn, Name, State, _Extra) ->
@@ -52,25 +58,24 @@ terminate(_Reason, _Name, _State) ->
 %%% State implementation
 %%%
 
-connected(Event, State) ->
-    case Event of
-        #{<<"type">> := <<"auth">>} ->
-            #{<<"user">> := User, <<"pass">> := Pass} = Event,
-            case iris_hook:run(authenticate, [User, Pass]) of
-                {ok, Token} ->
-                    State2 = State#state{user = User,
-                                         token = Token},
-                    send(#{message => <<"Authenticated">>}, State), 
-                    {next_state, established, State2};
-                {error, _Reason} ->
-                    reply(error, [<<"Authentication error">>], State),
-                    {next_state, connected, State}
-            end;
-        _ ->
+connected(#{?TYPE := <<"auth">>} = Event, State) ->
+    #{<<"user">> := User, <<"pass">> := Pass} = Event,
+    case iris_hook:run(authenticate, [User, Pass]) of
+        {ok, Token} ->
+            State2 = State#state{user = User, token = Token},
+            send(#{message => <<"Authenticated">>}, State),
+            {next_state, established, State2};
+        {error, _Reason} ->
+            reply(error, [<<"Authentication error">>], State),
             {next_state, connected, State}
-    end.
+    end;
+connected(_Event, State) ->
+    {next_state, connected, State}.
 
-established(#{<<"type">> := <<"request">>} = Event, State) ->
+established(#{?TYPE := <<"message">>} = Event, State) ->
+    %% type, user, channel, text, ts
+    {next_state, established, State};
+established(#{?TYPE := <<"request">>} = Event, State) ->
     case iris_req:handle(Event) of
         {ok, Result} ->
             reply(response, Result, State),
@@ -78,7 +83,7 @@ established(#{<<"type">> := <<"request">>} = Event, State) ->
         {error, Reason} ->
             reply(error, Reason, State),
             {next_state, established, State}
-    end;            
+    end;
 established(_Event, State) ->
     {next_state, established, State}.
 
@@ -86,13 +91,13 @@ established(_Event, State) ->
 %%% Internal functions
 %%%
 
-send(Msg, #state{format = json,
-                 protocol = websocket,
-                 socket = WS} = _State) ->
+send(Msg, #state{protocol = {json, websocket}, socket = WS} = _State) ->
     Json = jsx:encode(Msg),
-    WS ! {text, Json}.
+    WS ! {text, Json};
+send(Msg, #state{protocol = raw, socket = Pid}) ->
+    Pid ! {reply, Msg}.
 
-reply(error, Args, #state{format = json} = State) ->
+reply(error, Args, #state{protocol = {json, _}} = State) ->
     Response =
         case Args of
             [Desc] ->
