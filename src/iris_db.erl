@@ -2,6 +2,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0,
+         create_table/3,
          create_table/5]).
 
 -export([init/1,
@@ -14,6 +15,9 @@
 start_link() ->
     Backend = iris_config:get_value(database, backend, iris_db_mnesia),
     gen_server:start_link({local, ?MODULE}, ?MODULE, [#{backend => Backend}], []).
+
+create_table(Name, Record, Replicated) ->
+    create_table(Name, Record, Replicated, undefined, undefined).
 
 create_table(Name, Record, Replicated, Key, Index) ->
     gen_server:call(?MODULE, {create_table, Name, Record, Replicated, Key, Index}).

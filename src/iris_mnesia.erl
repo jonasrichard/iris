@@ -25,7 +25,8 @@ ensure_schema() ->
 ensure_table_session() ->
     ok = ensure_table(session, [{ram_copies, [node()]},
                                 {record_name, session},
-                                {attributes, record_info(fields, session)}]).
+                                {attributes, record_info(fields, session)},
+                                {index, [#session.user]}]).
 
 ensure_table(Table, TabDef) ->
     case mnesia:create_table(Table, TabDef) of

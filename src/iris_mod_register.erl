@@ -13,8 +13,9 @@
 start_link(Opts) ->
     proc_lib:start_link(?MODULE, init, [Opts, self()]).
 
-init(_Opts, Parent) ->
-    iris_db:create_table(user, record_info(fields, user), true, undefined, undefined),
+init(Opts, Parent) ->
+    lager:info("Starting iris_mod_register with ~p", [Opts]),
+    iris_db:create_table(user, record_info(fields, user), true),
     iris_hook:add(authenticate, ?MODULE, authenticate, 10),
     proc_lib:init_ack(Parent, {ok, self()}),
     loop().

@@ -13,7 +13,8 @@
           socket,           %% pid of the sender/receiver
           protocol,         %% {json, websocket} | raw
           user,
-          token
+          token,            %% Token for client application
+          sid               %% session id
          }).
 
 %% Message macros
@@ -61,8 +62,13 @@ terminate(_Reason, _Name, _State) ->
 connected(#{?TYPE := <<"auth">>} = Event, State) ->
     #{<<"user">> := User, <<"pass">> := Pass} = Event,
     case iris_hook:run(authenticate, [User, Pass]) of
+        ok ->
+            %% no registered hook could generate a token
+            reply(error, [<<"Authentication error">>], State),
+            {next_state, connected, State};
         {ok, Token} ->
-            State2 = State#state{user = User, token = Token},
+            SessionId = iris_sm:save_session(self(), User),
+            State2 = State#state{user = User, token = Token, sid = SessionId},
             send(#{message => <<"Authenticated">>}, State),
             {next_state, established, State2};
         {error, _Reason} ->
