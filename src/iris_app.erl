@@ -20,6 +20,7 @@ stop(_State) ->
 wait_for_mnesia() ->
     lager:info("Starting mnesia..."),
     iris_mnesia:ensure_schema(),
+    iris_mnesia:ensure_table_session(),
     lager:info("Waiting for mnesia tables..."),
     mnesia:wait_for_tables(mnesia:system_info(local_tables), infinity),
     lager:info("Tables are ready").
