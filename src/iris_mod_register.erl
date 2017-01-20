@@ -28,7 +28,7 @@ loop() ->
 
 authenticate(User, Pass) ->
     case {User, Pass} of
-        {<<"user1">>, _} ->
+        {<<"user", _/binary>>, _} ->
             {stop, true};
         _ ->
             %% Give the chance to other members of the hook
