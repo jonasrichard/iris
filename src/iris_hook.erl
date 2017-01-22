@@ -33,7 +33,9 @@
 %%%
 
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    {ok, Pid} = gen_server:start_link({local, ?MODULE}, ?MODULE, [], []),
+    create_default_hooks(),
+    {ok, Pid}.
 
 -spec add(atom(), atom(), atom(), integer()) -> any().
 add(Hook, Module, Function, Priority) ->
@@ -104,12 +106,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%
 
+create_default_hooks() ->
+    iris_hook:add(message_received, iris_channel, on_message_received, 10).
+
 sort_by_priority(Callbacks) ->
     lists:sort(fun(C1, C2) ->
                        C1#callback.priority =< C2#callback.priority
                end, Callbacks).
 
-run_callbacks([], Args) ->
+run_callbacks([], _Args) ->
     ok;
 run_callbacks([#callback{module = M, function = F} | Rest], Args) ->
     try erlang:apply(M, F, Args) of

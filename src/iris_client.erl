@@ -43,12 +43,12 @@ init([Arg]) ->
         {json, websocket, Pid} ->
             State = #state{socket = Pid, protocol = {json, websocket}},
             erlang:monitor(process, Pid),
-            send(#{type => hello}, State),
+            send(iris_message:hello(), State),
             {ok, connected, State};
         {raw, Pid} ->
             State = #state{socket = Pid, protocol = raw},
             erlang:monitor(process, Pid),
-            send(#{type => hello}, State),
+            send(iris_message:hello(), State),
             {ok, connected, State};
         _Other ->
             lager:error("Unknown init args: ~p", [Arg]),
@@ -84,8 +84,7 @@ connected(#{?TYPE := <<"auth">>} = Event, State) ->
             SessionId = iris_sm:save_session(self(), User),
             iris_hook:run(session_created, [User, SessionId]),
             State2 = State#state{user = User, token = Token, sid = SessionId},
-            send(#{message => <<"Authenticated">>,
-                   session => SessionId}, State),
+            send(iris_message:session(SessionId), State),
             {next_state, established, State2};
         {error, _Reason} ->
             reply(error, [<<"Authentication error">>], State),

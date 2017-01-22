@@ -1,9 +1,11 @@
 -module(iris_mnesia).
 
 -export([ensure_schema/0,
-         ensure_table_session/0]).
+         ensure_tables/0]).
 
 -include("iris_db.hrl").
+
+-define(PROPS(Record), [{record_name, Record}, {attributes, record_info(fields, Record)}]).
 
 ensure_schema() ->
     case mnesia:system_info(extra_db_nodes) of
@@ -22,11 +24,32 @@ ensure_schema() ->
             lager:info("mnesia already has extra db nodes: ~p", [N])
     end.
 
+ensure_tables() ->
+    ok = ensure_table_session(),
+    ok = ensure_table_channel(),
+    ok = ensure_table_user_channel(),
+    ok = ensure_table_history(),
+    ok = ensure_table_history_index().
+
 ensure_table_session() ->
-    ok = ensure_table(session, [{ram_copies, [node()]},
-                                {record_name, session},
-                                {attributes, record_info(fields, session)},
-                                {index, [#session.user]}]).
+    ok = ensure_table(session, [{ram_copies, [node()]}, {index, [#session.user]} |
+                                ?PROPS(session)]).
+
+ensure_table_channel() ->
+    ok = ensure_table(channel,
+                      [{disc_copies, [node()]} | ?PROPS(channel)]).
+
+ensure_table_user_channel() ->
+    ok = ensure_table(user_channel,
+                      [{disc_copies, [node()]} | ?PROPS(user_channel)]).
+
+ensure_table_history() ->
+    ok = ensure_table(history,
+                      [{disc_only_copies, [node()]} | ?PROPS(history)]).
+
+ensure_table_history_index() ->
+    ok = ensure_table(history_index,
+                      [{disc_copies, [node()]} | ?PROPS(history_index)]).
 
 ensure_table(Table, TabDef) ->
     case mnesia:create_table(Table, TabDef) of
