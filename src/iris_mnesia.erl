@@ -26,6 +26,7 @@ ensure_schema() ->
 
 ensure_tables() ->
     ok = ensure_table_session(),
+    ok = ensure_table_channel_proc(),
     ok = ensure_table_channel(),
     ok = ensure_table_user_channel(),
     ok = ensure_table_history(),
@@ -34,6 +35,9 @@ ensure_tables() ->
 ensure_table_session() ->
     ok = ensure_table(session, [{ram_copies, [node()]}, {index, [#session.user]} |
                                 ?PROPS(session)]).
+
+ensure_table_channel_proc() ->
+    ok = ensure_table(channel_proc, [{ram_copies, [node()]}, ?PROPS(channel_proc)]).
 
 ensure_table_channel() ->
     ok = ensure_table(channel,

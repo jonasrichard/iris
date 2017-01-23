@@ -12,6 +12,11 @@
           last_ts
          }).
 
+-record(channel_proc, {
+          channel_id,
+          pid
+         }).
+
 -record(user_channel, {
           user,
           channel_ids = []

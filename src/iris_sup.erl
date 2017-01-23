@@ -17,6 +17,7 @@ init(_Args) ->
            child(iris_req, []),
            child(iris_db, []),
            child(iris_loader, []),
+           child(iris_channel_sup, []),
            start_cowboy()
           ]}
          }.
@@ -28,6 +29,11 @@ child(Module, Args) ->
       shutdown => brutal_kill,
       type => worker,
       modules => []}.
+
+child_sup(Module, Args) ->
+    Spec = child(Module, Args),
+    Spec#{shutdown => infinity,
+          type => supervisor}.
 
 start_cowboy() ->
     Dispatch = cowboy_router:compile([
