@@ -83,3 +83,9 @@ Client needs to send that it received the messages.
 
 It means that it gets all the messages by the last message.
 
+* user: id -> name, pass, email
+* channel: id -> name, members, created\_ts, last\_ts
+* history: channel\_id -> messages
+* cursor: user\_resource\_channel -> ts
+* unread: user\_resource\_channel -> count
+
