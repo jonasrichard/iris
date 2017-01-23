@@ -8,7 +8,7 @@
 
 -include("iris_db.hrl").
 
-%% If channel is a process, we don't need to check if it exists, etc.
+%% This module will be a gen_server and it will be started iris_channel_sup:start_channel/2
 
 create_channel(Id, Members) ->
     Now = iris_utils:ts(),

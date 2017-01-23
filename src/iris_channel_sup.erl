@@ -16,8 +16,18 @@ start_link() ->
 start_channel(ChannelId) ->
     case mnesia:dirty_read(channel_proc, ChannelId) of
         [] ->
-            %% we can create the channel and store
-            ok;
+            case iris_channel:read_channel(ChannelId) of
+                {ok, Channel} ->
+                    %% start new child with this channel
+                    {ok, Pid} = supervisor:start_child(?MODULE, [Channel]),
+                    Proc = #channel_proc{channel_id = ChannelId,pid = Pid},
+                    ok = mnesia:dirty_write(channel_proc, Proc),
+                    Pid;
+                {error, not_found} ->
+                    %% in this case we need at least on user and the other to
+                    %% whom the message is sent (to create the channel)
+                    ok
+            end;
         [Channel] ->
             %% we need to pass the pid back if
             %% the process is alive. And this is the hard part :)
