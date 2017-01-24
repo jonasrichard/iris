@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+    var conn1;
+    $(document).ready(function() {
+        $("#connect1").click(function() {
+            var name = $("#username1").text();
+            var pass = $("#password1").text();
+            console.log(name + " " + pass);
+            
+            conn1 = new WebSocket("ws://localhost:8080/ws");
+            conn1.onmessage = function(e) {
+                $("#chat1").append('<p class="text-primary">' + e.data + '</p>');
+                var msg = $.parseJSON(e.data);
+                switch (msg.type) {
+                    case "hello":
+                        conn1.send({type: "auth", 
+                                    user: name,
+                                    pass: pass});
+                        break;
+                }
+            };
+        });
+    });
+    </script>
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <form>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" class="form-control" id="username1" placeholder="user">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="text" class="form-control" id="password1" placeholder="user">
+                </div>
+                <button class="btn btn-default" type="button" id="connect1">Connect</button>
+                <button class="btn btn-default" type="button" id="disconnect1">Disconnect</button>
+                <div class=".pre-scrollable" id="chat1">
+                </div>
+                <input type="text" class="form-control" placeholder="Hey">
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

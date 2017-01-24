@@ -37,7 +37,7 @@ ensure_table_session() ->
                                 ?PROPS(session)]).
 
 ensure_table_channel_proc() ->
-    ok = ensure_table(channel_proc, [{ram_copies, [node()]}, ?PROPS(channel_proc)]).
+    ok = ensure_table(channel_proc, [{ram_copies, [node()]} | ?PROPS(channel_proc)]).
 
 ensure_table_channel() ->
     ok = ensure_table(channel,
