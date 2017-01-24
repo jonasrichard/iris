@@ -13,16 +13,20 @@
 -include("iris_db.hrl").
 
 -record(state, {
-          socket,           %% pid of the sender/receiver
-          protocol,         %% {json, websocket} | raw
+          socket,                   %% pid of the sender/receiver
+          protocol,                 %% {json, websocket} | raw
           user,
-          token,            %% Token for client application
-          sid               %% session id
+          token,                    %% Token for client application
+          sid,                      %% session id
+          channels = #{}            %% map of channels (id, pid)
          }).
 
 %% Message macros
+-define(CHANNEL, <<"channel">>).
 -define(TYPE, <<"type">>).
 -define(USER, <<"user">>).
+
+%% TODO monitor channels
 
 %%%
 %%% API functions
@@ -100,13 +104,11 @@ established(#{?TYPE := <<"message">>, ?USER := ToUser} = Event,
             %% we drop the message
             {next_state, established, State};
         _ ->
-            case iris_sm:get_session_by_user(ToUser) of
-                {ok, Session} ->
-                    route_message(Session#session.pid, ToUser, Event),
-                    {next_state, established, State};
-                {error, not_found} ->
-                    iris_hook:run(offline_message, [User, Event]),
-                    {next_state, established, State}
+            case send_to_channel(Event, User, ToUser, State) of
+                {ok, NewState} ->
+                    {next_state, established, NewState};
+                {Reason, NewState} ->
+                    {stop, Reason, NewState}
             end
     end;
 established(#{?TYPE := <<"request">>} = Event, State) ->
@@ -128,10 +130,31 @@ established(_Event, State) ->
 %%% Internal functions
 %%%
 
-route_message(ClientPid, User, Event) ->
-    Response = Event#{<<"user">> => User},
-    lager:info("Send to ~p ~p", [ClientPid, Response]),
-    gen_fsm:send_event(ClientPid, {route, Response}).
+%route_message(ClientPid, User, Event) ->
+%    Response = Event#{<<"user">> => User},
+%    lager:info("Send to ~p ~p", [ClientPid, Response]),
+%    gen_fsm:send_event(ClientPid, {route, Response}).
+
+send_to_channel(Message, From, To, #state{channels = Channels} = State) ->
+    #{?CHANNEL := ChannelId} = Message,
+    case Channels of
+        #{ChannelId := Pid} ->
+            %% TODO message sent to channel hook?
+            Result = iris_channel:send_message(Pid, Message, From, To),
+            {Result, State};
+        _ ->
+            case iris_channel:get_channel_proc(ChannelId) of
+                {ok, Pid} ->
+                    %% The channel is started already, store its pid
+                    NewChannels = Channels#{ChannelId => Pid},
+                    Result = iris_channel:send_message(Pid, Message, From, To),
+                    {Result, State#state{channels = NewChannels}};
+                {error, not_found} ->
+                    {ok, Pid} = iris_channel_sup:start_channel(ChannelId, [From, To]),
+                    Result = iris_channel:send_message(Pid, Message, From, To),
+                    {Result, State}
+            end
+    end.
 
 send(Msg, #state{protocol = {json, websocket}, socket = WS} = _State) ->
     Json = jsx:encode(Msg),

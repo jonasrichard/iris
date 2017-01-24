@@ -17,7 +17,7 @@ init(_Args) ->
            child(iris_req, []),
            child(iris_db, []),
            child(iris_loader, []),
-           child(iris_channel_sup, []),
+           child_sup(iris_channel_sup, []),
            start_cowboy()
           ]}
          }.
