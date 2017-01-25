@@ -38,6 +38,31 @@ The reply is the session id. Probably we need to support resources here.
 }
 ```
 
+#### Create channel
+
+One can create a channel in order that he could send messages to multiple
+persons (or just one).
+
+```
+{
+    "type": "channel.create",
+    "name": "optional name of the channel",
+    "channelId": "optional id",
+    "invitees": [
+        "user1",
+        "user2"
+    ]
+}
+```
+
+#### Get channel list
+
+```
+{
+    "type": "channel.list"
+}
+```
+
 #### Message sending
 
 Messages can be sent through a channel. Channel has an id and has members.

@@ -7,6 +7,8 @@
 
 -export([init/1,
          handle_info/3,
+         handle_event/3,
+         handle_sync_event/4,
          code_change/4,
          terminate/3]).
 
@@ -69,6 +71,12 @@ handle_info(Info, Name, State) ->
     lager:info("~p", [Info]),
     {next_state, Name, State}.
 
+handle_event(_Event, Name, State) ->
+    {next_state, Name, State}.
+
+handle_sync_event(_Event, _From, Name, State) ->
+    {reply, ok, Name, State}.
+
 code_change(_OldVsn, Name, State, _Extra) ->
     {ok, Name, State}.
 
@@ -97,6 +105,7 @@ connected(#{?TYPE := <<"auth">>} = Event, State) ->
             reply(error, [<<"Authentication error">>], State),
             {next_state, connected, State}
     end;
+
 connected(_Event, State) ->
     {next_state, connected, State}.
 
@@ -110,10 +119,23 @@ established(#{?TYPE := <<"message">>} = Event,
             case send_to_channel(Event, User, State) of
                 {ok, NewState} ->
                     {next_state, established, NewState};
-                {Reason, NewState} ->
-                    {stop, Reason, NewState}
+                {_Reason, NewState} ->
+                    reply(error, [<<"No such channel">>], NewState),
+                    {next_state, established, NewState}
             end
     end;
+
+established(#{?TYPE := <<"channel.create">>} = Event,
+            #state{user = User} = State) ->
+    case iris_channel:create_channel(Event, User) of
+        {ok, Channel} ->
+            send(iris_message:channel(Channel), State),
+            {next_state, established, State};
+        {error, _Reason} ->
+            reply(error, [<<"Error during creating channel">>], State),
+            {next_state, established, State}
+    end;
+
 established(#{?TYPE := <<"request">>} = Event, State) ->
     case iris_req:handle(Event) of
         {ok, Result} ->
@@ -123,9 +145,11 @@ established(#{?TYPE := <<"request">>} = Event, State) ->
             reply(error, Reason, State),
             {next_state, established, State}
     end;
+
 established({route, Event}, State) ->
     send(Event, State),
     {next_state, established, State};
+
 established(_Event, State) ->
     {next_state, established, State}.
 
@@ -133,23 +157,11 @@ established(_Event, State) ->
 %%% Internal functions
 %%%
 
-create_channel(Message, From, State) ->
-    #{?CHANNEL := ChannelId,
-      <<"invitees">> := Invitees} = Message,
-    case iris_channel:get_channel_proc(ChannelId) of
-        {error, not_found} ->
-            %% TODO check error
-            create_channel(ChannelId, From, Invitees);
-        {ok, Channel} ->
-            %% TODO handle the invite
-            Channel
-    end.
-
 send_to_channel(Message, From, #state{channels = Channels} = State) ->
     #{?CHANNEL := ChannelId} = Message,
     case Channels of
         #{ChannelId := Pid} ->
-            %% TODO message sent to channel hook?
+            %% TODO send message to channel hook?
             Result = iris_channel:send_message(Pid, Message, From),
             {Result, State};
         _ ->
@@ -160,8 +172,9 @@ send_to_channel(Message, From, #state{channels = Channels} = State) ->
                     Result = iris_channel:send_message(Pid, Message, From),
                     {Result, State#state{channels = NewChannels}};
                 {error, not_found} ->
-                    %% TODO send back error message
-                    {error, State}
+                    {ok, Pid} = iris_channel_sup:start_channel(ChannelId),
+                    Result = iris_channel:send_message(Pid, Message, From),
+                    {Result, State}
             end
     end.
 

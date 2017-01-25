@@ -3,7 +3,10 @@
 -export([hello/0,
          error/2,
          session/1,
+         channel/1,
          message/3]).
+
+-include("iris_db.hrl").
 
 hello() ->
     #{<<"type">> => <<"hello">>}.
@@ -24,4 +27,8 @@ message(Recipient, Channel, Text) ->
 session(SessionId) ->
     #{<<"type">> => <<"session">>,
       <<"sessionId">> => SessionId}.
+
+channel(Channel) ->
+    #{<<"type">> => <<"channel">>,
+      <<"id">> => Channel#channel.id}.
 

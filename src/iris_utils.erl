@@ -1,6 +1,10 @@
 -module(iris_utils).
 
--export([ts/0]).
+-export([id/0,
+         ts/0]).
+
+id() ->
+    integer_to_binary(erlang:phash2(os:timestamp())).
 
 ts() ->
     {Mega, Sec, Micro} = os:timestamp(),

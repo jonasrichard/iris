@@ -107,7 +107,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%
 
 create_default_hooks() ->
-    iris_hook:add(message_received, iris_channel, on_message_received, 10).
+    ok.
+    %%iris_hook:add(message_received, iris_channel, on_message_received, 10).
 
 sort_by_priority(Callbacks) ->
     lists:sort(fun(C1, C2) ->

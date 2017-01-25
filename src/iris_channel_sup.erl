@@ -2,7 +2,7 @@
 -behaviour(supervisor).
 
 -export([start_link/0,
-         start_channel/2]).
+         start_channel/1]).
 
 -export([init/1]).
 
@@ -15,13 +15,13 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_channel(ChannelId, Creator, Invitees) ->
+start_channel(ChannelId) ->
     case iris_channel:get_channel_proc(ChannelId) of
         {ok, #channel_proc{pid = Pid}} ->
             {ok, Pid};
         {error, not_found} ->
-            Members = [Creator | Invitees],
-            {ok, Pid} = supervisor:start_child(?MODULE, [ChannelId, Members])
+            {ok, Pid} = supervisor:start_child(?MODULE, [ChannelId]),
+            {ok, Pid}
     end.
 
 %%%
