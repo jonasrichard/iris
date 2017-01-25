@@ -17,10 +17,14 @@
 -include("iris_db.hrl").
 
 -record(state, {
+          id,
+          members
          }).
 
 start_link(Id, Members) ->
-    gen_server:start_link(?MODULE, [Id, Members], []).
+    {ok, Pid} = gen_server:start_link(?MODULE, [Id, Members], []),
+    ok = mnesia:dirty_write(#channel_proc{channel_id = Id, pid = Pid}),
+    {ok, Pid}.
 
 get_channel_proc(Id) ->
     case mnesia:dirty_read(channel_proc, Id) of
@@ -30,11 +34,14 @@ get_channel_proc(Id) ->
             {ok, ChannelProc}
     end.
 
+create_channel(Id, Creator, Invitees) ->
+    create_channel(Id, [Creator | Invitees]).
+
 send_message(Pid, Message, From, To) ->
     gen_server:call(Pid, {send, Message, From, To}).
 
 on_message_received(User, #{<<"user">> := ToUser,
-                            <<"channel">> := ChannelId} = Message) ->
+                            <<"channel">> := ChannelId} = _Message) ->
     case read_channel(ChannelId) of
         [] ->
             create_channel(ChannelId, [User, ToUser]);
@@ -48,8 +55,18 @@ on_message_received(User, #{<<"user">> := ToUser,
 %%% gen_server callbacks
 %%%
 
-init(_) ->
-    {ok, #state{}}.
+init([Id, Members]) ->
+    lager:debug("Spawning channel ~p (~p)", [Id, Members]),
+    Channel =
+        case read_channel(Id) of
+            {ok, Existing} ->
+                Existing;
+            {error, not_found} ->
+                create_channel(Id, Members)
+        end,
+
+     {ok, #state{id = Channel#channel.id,
+                 members = Channel#channel.members}}.
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -58,6 +75,7 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_call({send, Message, From, To}, _From, State) ->
+    lager:debug("Sending message (~p) ~p to ~p", [Message, From, To]),
     %% store the message
     %% and notify online members
     {reply, ok, State};
@@ -76,12 +94,13 @@ code_change(_OldVsn, State, _Extra) ->
 
 create_channel(Id, Members) ->
     Now = iris_utils:ts(),
-    Channel = #channel{channel_id = Id,
+    Channel = #channel{id = Id,
                        members = Members,
                        created_ts = Now,
                        last_ts = Now},
     ok = mnesia:dirty_write(Channel),
-    [add_user_channel(User, Id) || User <- Members].
+    [add_user_channel(User, Id) || User <- Members],
+    Channel.
 
 read_channel(Id) ->
     case mnesia:dirty_read(channel, Id) of

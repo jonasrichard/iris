@@ -15,11 +15,12 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_channel(ChannelId, Members) ->
+start_channel(ChannelId, Creator, Invitees) ->
     case iris_channel:get_channel_proc(ChannelId) of
         {ok, #channel_proc{pid = Pid}} ->
             {ok, Pid};
         {error, not_found} ->
+            Members = [Creator | Invitees],
             {ok, Pid} = supervisor:start_child(?MODULE, [ChannelId, Members])
     end.
 

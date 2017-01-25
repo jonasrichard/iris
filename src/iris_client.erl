@@ -100,14 +100,14 @@ connected(#{?TYPE := <<"auth">>} = Event, State) ->
 connected(_Event, State) ->
     {next_state, connected, State}.
 
-established(#{?TYPE := <<"message">>, ?USER := ToUser} = Event,
+established(#{?TYPE := <<"message">>} = Event,
             #state{user = User} = State) ->
     case iris_hook:run(message_received, [User, Event]) of
         drop ->
             %% we drop the message
             {next_state, established, State};
         _ ->
-            case send_to_channel(Event, User, ToUser, State) of
+            case send_to_channel(Event, User, State) of
                 {ok, NewState} ->
                     {next_state, established, NewState};
                 {Reason, NewState} ->
@@ -133,29 +133,35 @@ established(_Event, State) ->
 %%% Internal functions
 %%%
 
-%route_message(ClientPid, User, Event) ->
-%    Response = Event#{<<"user">> => User},
-%    lager:info("Send to ~p ~p", [ClientPid, Response]),
-%    gen_fsm:send_event(ClientPid, {route, Response}).
+create_channel(Message, From, State) ->
+    #{?CHANNEL := ChannelId,
+      <<"invitees">> := Invitees} = Message,
+    case iris_channel:get_channel_proc(ChannelId) of
+        {error, not_found} ->
+            %% TODO check error
+            create_channel(ChannelId, From, Invitees);
+        {ok, Channel} ->
+            %% TODO handle the invite
+            Channel
+    end.
 
-send_to_channel(Message, From, To, #state{channels = Channels} = State) ->
+send_to_channel(Message, From, #state{channels = Channels} = State) ->
     #{?CHANNEL := ChannelId} = Message,
     case Channels of
         #{ChannelId := Pid} ->
             %% TODO message sent to channel hook?
-            Result = iris_channel:send_message(Pid, Message, From, To),
+            Result = iris_channel:send_message(Pid, Message, From),
             {Result, State};
         _ ->
             case iris_channel:get_channel_proc(ChannelId) of
-                {ok, Pid} ->
+                {ok, #channel_proc{pid = Pid}} ->
                     %% The channel is started already, store its pid
                     NewChannels = Channels#{ChannelId => Pid},
-                    Result = iris_channel:send_message(Pid, Message, From, To),
+                    Result = iris_channel:send_message(Pid, Message, From),
                     {Result, State#state{channels = NewChannels}};
                 {error, not_found} ->
-                    {ok, Pid} = iris_channel_sup:start_channel(ChannelId, [From, To]),
-                    Result = iris_channel:send_message(Pid, Message, From, To),
-                    {Result, State}
+                    %% TODO send back error message
+                    {error, State}
             end
     end.
 

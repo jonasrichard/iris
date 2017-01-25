@@ -8,20 +8,20 @@
 
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script type="text/javascript">
-    var conn1;
-    $(document).ready(function() {
-        $("#connect1").click(function() {
-            var name = $("#username1").val();
-            var pass = $("#password1").val();
-            console.log(name + " " + pass);
+    var conn = [];
+
+    function init(num) {
+        $("#connect" + num).click(function() {
+            var name = $("#username" + num).val();
+            var pass = $("#password" + num).val();
             
-            conn1 = new WebSocket("ws://localhost:8080/ws");
-            conn1.onmessage = function(e) {
-                $("#chat1").append('<p class="text-primary">' + e.data + '</p>');
+            conn[num] = new WebSocket("ws://localhost:8080/ws");
+            conn[num].onmessage = function(e) {
+                $("#chat" + num).append('<p class="text-primary">' + e.data + '</p>');
                 var msg = $.parseJSON(e.data);
                 switch (msg.type) {
                     case "hello":
-                        conn1.send(
+                        conn[num].send(
                             JSON.stringify(
                                 {type: "auth", 
                                  user: name,
@@ -30,6 +30,30 @@
                 }
             };
         });
+
+        $("#message" + num).change(function(e) {
+            var text = $(this).val();
+            var chan = $("#channel" + num).val();
+
+            var msg = JSON.stringify(
+                    {
+                        type: "message",
+                        user: "user2",
+                        text: text,
+                        channel: chan
+                    });
+
+            conn[num].send(msg);
+        });
+
+        $("#disconnect" + num).click(function() {
+            conn[num].close();
+        });
+    }
+
+    $(document).ready(function() {
+        init(1);
+        init(2);
     });
     </script>
 </head>
@@ -37,21 +61,50 @@
 <div class="container">
     <div class="row">
         <div class="col-md-4">
-            <form>
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" class="form-control" id="username1" placeholder="user">
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="text" class="form-control" id="password1" placeholder="user">
-                </div>
-                <button class="btn btn-default" type="button" id="connect1">Connect</button>
-                <button class="btn btn-default" type="button" id="disconnect1">Disconnect</button>
-                <div class="pre-scrollable" id="chat1">
-                </div>
-                <input type="text" class="form-control" placeholder="Hey">
-            </form>
+            <div class="panel panel-default"><div class="panel-body">
+                <form>
+                    <div class="form-group">
+                        <label for="username1">Username</label>
+                        <input type="text" class="form-control" id="username1" placeholder="user">
+                    </div>
+                    <div class="form-group">
+                        <label for="password1">Password</label>
+                        <input type="text" class="form-control" id="password1" placeholder="****">
+                    </div>
+                    <div class="form-group">
+                        <label for="channel1">Channel</label>
+                        <input type="text" class="form-control" id="channel1" placeholder="channel">
+                    </div>
+                    <button class="btn btn-default" type="button" id="connect1">Connect</button>
+                    <button class="btn btn-default" type="button" id="disconnect1">Disconnect</button>
+                    <div class="pre-scrollable" id="chat1">
+                    </div>
+                    <input type="text" class="form-control" id="message1" placeholder="Hey">
+                </form>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="panel panel-default"><div class="panel-body">
+                <form>
+                    <div class="form-group">
+                        <label for="username2">Username</label>
+                        <input type="text" class="form-control" id="username2" placeholder="user">
+                    </div>
+                    <div class="form-group">
+                        <label for="password2">Password</label>
+                        <input type="text" class="form-control" id="password2" placeholder="****">
+                    </div>
+                    <div class="form-group">
+                        <label for="channel2">Channel</label>
+                        <input type="text" class="form-control" id="channel2" placeholder="channel">
+                    </div>
+                    <button class="btn btn-default" type="button" id="connect2">Connect</button>
+                    <button class="btn btn-default" type="button" id="disconnect2">Disconnect</button>
+                    <div class="pre-scrollable" id="chat2">
+                    </div>
+                    <input type="text" class="form-control" id="message2" placeholder="Hey">
+                </form>
+            </div></div>
         </div>
     </div>
 </div>
