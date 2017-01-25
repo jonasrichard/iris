@@ -2,7 +2,8 @@
 -behaviour(gen_server).
 
 -export([start_link/2,
-         get_channel_proc/1]).
+         get_channel_proc/1,
+         send_message/4]).
 
 -export([on_message_received/2]).
 
@@ -29,6 +30,9 @@ get_channel_proc(Id) ->
             {ok, ChannelProc}
     end.
 
+send_message(Pid, Message, From, To) ->
+    gen_server:call(Pid, {send, Message, From, To}).
+
 on_message_received(User, #{<<"user">> := ToUser,
                             <<"channel">> := ChannelId} = Message) ->
     case read_channel(ChannelId) of
@@ -53,6 +57,10 @@ handle_info(_Info, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+handle_call({send, Message, From, To}, _From, State) ->
+    %% store the message
+    %% and notify online members
+    {reply, ok, State};
 handle_call(_Req, _From, State) ->
     {reply, ok, State}.
 

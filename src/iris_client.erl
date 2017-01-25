@@ -10,6 +10,9 @@
          code_change/4,
          terminate/3]).
 
+-compile({nowarn_unused_function, [{connected, 2},
+                                   {established, 2}]}).
+
 -include("iris_db.hrl").
 
 -record(state, {
@@ -166,8 +169,8 @@ reply(error, Args, #state{protocol = {json, _}} = State) ->
     Response =
         case Args of
             [Desc] ->
-                iris_msg_json:error(Desc);
+                iris_msg_json:error_msg(Desc);
             [Desc, Code] ->
-                iris_msg_json:error(Desc, Code)
+                iris_msg_json:error_msg(Desc, Code)
         end,
     send(Response, State).
