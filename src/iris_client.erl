@@ -111,12 +111,13 @@ connected(_Event, State) ->
 
 established(#{?TYPE := <<"message">>} = Event,
             #state{user = User} = State) ->
-    case iris_hook:run(message_received, [User, Event]) of
+    Event2 = ensure_ts(Event),
+    case iris_hook:run(message_received, [User, Event2]) of
         drop ->
             %% we drop the message
             {next_state, established, State};
         _ ->
-            case send_to_channel(Event, User, State) of
+            case send_to_channel(Event2, User, State) of
                 {ok, NewState} ->
                     {next_state, established, NewState};
                 {_Reason, NewState} ->
@@ -146,8 +147,8 @@ established(#{?TYPE := <<"request">>} = Event, State) ->
             {next_state, established, State}
     end;
 
-established({route, Event}, State) ->
-    send(Event, State),
+established({route, #{?TYPE := <<"message">>} = Message}, State) ->
+    send(Message, State),
     {next_state, established, State};
 
 established(_Event, State) ->
@@ -193,3 +194,10 @@ reply(error, Args, #state{protocol = {json, _}} = State) ->
                 iris_msg_json:error_msg(Desc, Code)
         end,
     send(Response, State).
+
+%% Ensure that message has timestamp
+ensure_ts(#{<<"ts">> := _} = Message) ->
+    Message;
+ensure_ts(Message) ->
+    Message#{<<"ts">> => iris_utils:ts()}.
+

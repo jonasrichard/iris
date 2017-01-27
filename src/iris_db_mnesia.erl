@@ -5,7 +5,7 @@
 
 -include("iris.hrl").
 
-init(Nodes) ->
+init(_Nodes) ->
     ok = mnesia:start(),
     {ok, _ExtraNodes} = mnesia:change_config(extra_db_nodes, nodes()),
     ok.

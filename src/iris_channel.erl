@@ -6,8 +6,6 @@
          get_channel_proc/1,
          send_message/3]).
 
--export([on_message_received/2]).
-
 -export([init/1,
          handle_info/2,
          handle_cast/2,
@@ -22,6 +20,8 @@
           members
          }).
 
+%% TODO: keep members in the record up-to-date
+
 %%%
 %%% API functions
 %%%
@@ -31,6 +31,7 @@ start_link(Id) ->
     ok = mnesia:dirty_write(#channel_proc{channel_id = Id, pid = Pid}),
     {ok, Pid}.
 
+%% Get the pid of the channel if it has been spawned already.
 get_channel_proc(Id) ->
     case mnesia:dirty_read(channel_proc, Id) of
         [] ->
@@ -39,24 +40,15 @@ get_channel_proc(Id) ->
             {ok, ChannelProc}
     end.
 
+%% Create a channel in the database
 create_channel(#{<<"channelId">> := Id} = Message, Creator) ->
     create_channel(Message, Id, Creator);
 create_channel(Message, Creator) ->
     create_channel(Message, iris_utils:id(), Creator).
 
+%% Send a message to a channel From a user
 send_message(Pid, Message, From) ->
     gen_server:call(Pid, {send, Message, From}).
-
-on_message_received(User, #{<<"user">> := ToUser,
-                            <<"channel">> := ChannelId} = _Message) ->
-    case read_channel(ChannelId) of
-        [] ->
-            create_channel(ChannelId, [User, ToUser]);
-        _ ->
-            add_user_channel(User, ChannelId),
-            add_user_channel(ToUser, ChannelId)
-    end,
-    ok.
 
 %%%
 %%% gen_server callbacks
@@ -77,8 +69,15 @@ handle_cast(_Msg, State) ->
 
 handle_call({send, Message, From}, _From, State) ->
     lager:debug("Sending message (~p) ~p", [Message, From]),
-    %% store the message
-    %% and notify online members
+    #{<<"text">> := Text, <<"ts">> := TS} = Message,
+    Msg = #message{
+             user = From,
+             text = Text,
+             ts = TS},
+    ChannelId = State#state.id,
+    iris_history:append_message(ChannelId, Msg),
+    RoutedMessage = Message#{<<"user">> => From},
+    broadcast_send(From, State#state.members, RoutedMessage),
     {reply, ok, State};
 handle_call(_Req, _From, State) ->
     {reply, ok, State}.
@@ -137,3 +136,17 @@ add_user_channel(User, ChannelId) ->
                     ok
             end
     end.
+
+broadcast_send(From, Members, Message) ->
+    [send_to_user(User, Message) || User <- Members, User =/= From].
+
+send_to_user(User, Message) ->
+    case iris_sm:get_session_by_user(User) of
+        {ok, #session{pid = Pid} = _Session} ->
+            %% TODO: also move the user's read pointer
+            gen_fsm:send_event(Pid, {route, Message});
+        {error, not_found} ->
+            %% the user is offline
+            ok
+    end.
+
