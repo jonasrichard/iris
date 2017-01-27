@@ -3,6 +3,8 @@
 
 -export([start_link/1,
          create_channel/2,
+         read_channel/1,
+         read_user_channel/1,
          get_channel_proc/1,
          send_message/3]).
 
@@ -45,6 +47,22 @@ create_channel(#{<<"channelId">> := Id} = Message, Creator) ->
     create_channel(Message, Id, Creator);
 create_channel(Message, Creator) ->
     create_channel(Message, iris_utils:id(), Creator).
+
+read_channel(Id) ->
+    case mnesia:dirty_read(channel, Id) of
+        [] ->
+            {error, not_found};
+        [Channel] ->
+            {ok, Channel}
+    end.
+
+read_user_channel(User) ->
+    case mnesia:dirty_read(user_channel, User) of
+        [] ->
+            [];
+        [#user_channel{channel_ids = Ids}] ->
+            Ids
+    end.
 
 %% Send a message to a channel From a user
 send_message(Pid, Message, From) ->
@@ -96,30 +114,23 @@ create_channel(Message, Id, Creator) ->
     case read_channel(Id) of
         {error, not_found} ->
             %% TODO implement a message validation layer
-            #{<<"invitees">> := Invitees} = Message,
-            Channel = insert_channel(Id, [Creator | Invitees]),
+            #{<<"name">> := Name, <<"invitees">> := Invitees} = Message,
+            Channel = insert_channel(Id, Name, [Creator | Invitees]),
             {ok, Channel};
         {ok, _} ->
             {error, already_exists}
     end.
 
-insert_channel(Id, Members) ->
+insert_channel(Id, Name, Members) ->
     Now = iris_utils:ts(),
     Channel = #channel{id = Id,
+                       name = Name,
                        members = Members,
                        created_ts = Now,
                        last_ts = Now},
     ok = mnesia:dirty_write(Channel),
     [add_user_channel(User, Id) || User <- Members],
     Channel.
-
-read_channel(Id) ->
-    case mnesia:dirty_read(channel, Id) of
-        [] ->
-            {error, not_found};
-        [Channel] ->
-            {ok, Channel}
-    end.
 
 add_user_channel(User, ChannelId) ->
     case mnesia:dirty_read(user_channel, User) of

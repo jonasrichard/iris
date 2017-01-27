@@ -9,6 +9,7 @@
 
 -record(channel, {
           id,
+          name,
           members = [],
           created_ts,
           last_ts

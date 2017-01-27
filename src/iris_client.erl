@@ -137,6 +137,24 @@ established(#{?TYPE := <<"channel.create">>} = Event,
             {next_state, established, State}
     end;
 
+established(#{?TYPE := <<"channel.list">>} = _Event,
+            #state{user = User} = State) ->
+    ChannelIds = iris_channel:read_user_channel(User),
+    lists:foreach(
+      fun(ChannelId) ->
+              case iris_channel:read_channel(ChannelId) of
+                  {error, not_found} ->
+                      ok;
+                  {ok, Channel} ->
+                      send(#{?TYPE => <<"channel.get">>,
+                             <<"channelId">> => ChannelId,
+                             <<"channelName">> => Channel#channel.name},
+                           State)
+              end
+      end,
+      ChannelIds),
+    {next_state, established, State};
+
 established(#{?TYPE := <<"request">>} = Event, State) ->
     case iris_req:handle(Event) of
         {ok, Result} ->

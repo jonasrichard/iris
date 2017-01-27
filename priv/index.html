@@ -1,17 +1,15 @@
 <!doctype html>
-<html>
+<html ng-app="chat">
 <head> 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.1/angular.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.1/angular-resource.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.1/angular-route.js"></script>
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css">
-
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-  <script type="text/javascript">
-  var conn = [];
-
-  function init(num) {
-      $("#connect" + num).click(function() {
+  <script src="js/chat.js"></script>
+  <!--
           var name = $("#username" + num).val();
           var pass = $("#password" + num).val();
           
@@ -42,66 +40,87 @@
                       text: text,
                       channel: chan
                   });
-
-          conn[num].send(msg);
-      });
-
-      $("#disconnect" + num).click(function() {
-          conn[num].close();
-      });
-  }
-
-  $(document).ready(function() {
-      init(1);
-      init(2);
-  });
-  </script>
+  -->
 </head>
-<body>
+<body ng-controller="ChatController as chat">
 <br/>
 <div class="container">
   <div class="row">
     <div class="col-md-4">
+      
+      <button type="button" id="login" class="btn btn-default"
+              ng-click="chat.showLoginDialog()">
+        Log in <span class="glyphicon glyphicon-user"></span>
+      </button>
+      <button type="button" id="logout" class="btn btn-default"
+              ng-click="chat.logout()">
+        Logout <span class="glyphicon glyphicon-off"></span>
+      </button>
+      <button type="button" id="create-channel" class="btn btn-default" aria-label="Create channel">
+        <span class="glyphicon glyphicon-pencil"></span>
+      </button>
+
+      <br/>
+      <br/>
+
       <div class="panel panel-default">
         <div class="panel-body">
           <h4>Channels</h4>
           <ul class="list-group">
-            <li class="list-group-item">
-              <a href="#">User1</a>
+            <li ng-repeat="channel in chat.channels" class="list-group-item">
+              <a href="#" ng-click="chat.selectChannel(channel.id)">{{channel.name}}</a>
             </li>
-            <li class="list-group-item">User3<span class="badge">3</span></li>
-            <li class="list-group-item">User2</li>
           </ul>
         </div>
       </div>
     </div>
+
     <div class="col-md-8">
       <div class="panel panel-default">
         <div class="panel-body">
           <div id="chat" style="height: 300px">
           </div>
-          <input type="text" class="form-control" placeholder="Hey">
+          <div class="input-group">
+            <input type="text" class="form-control" placeholder="Hey"
+                   ng-model="chat.text">
+            <span class="input-group-btn">
+              <button class="btn btn-default" type="button" ng-click="chat.sendText()">
+                Send
+              </button>
+            </span>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
-<div id="create-channel" class="modal fade" tabindex="-1" role="dialog">
+
+<!-- Login dialog -->
+<div id="log-in" class="modal fade" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title">Modal title</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        <h4 class="modal-title">Log in</h4>
       </div>
       <div class="modal-body">
-        <p>One fine body&hellip;</p>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" class="form-control" id="username" ng-model="chat.user">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" class="form-control" id="password" ng-model="chat.pass">
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary">Save changes</button>
+        <button type="button" class="btn btn-primary" ng-click="chat.login()">Log in</button>
       </div>
-    </div><!-- /.modal-content -->
-  </div><!-- /.modal-dialog -->
-</div><!-- /.modal -->
+    </div>
+  </div>
+</div>
 </body>
 </html>

@@ -22,7 +22,7 @@ websocket_handle(_Frame = {text, Json}, State) ->
     case process_json(Json) of
         {ok, Message} ->
             do_handle_message(Message, State),
-            {reply, {text, <<"ok">>}, State};
+            {ok, State};
         {error, _} ->
             {reply, {text, <<"error">>}, State}
     end;
