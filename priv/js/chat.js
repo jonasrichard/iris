@@ -16,6 +16,10 @@ angular.module('chat', [])
                   chat.getChannelList();
                   break;
 
+              case "message":
+                  // if channel is selected append message otherwise badge++
+                  break;
+
               case "channel.get":
                   chat.channels.push({id: json.channelId, name: json.channelName});
                   $scope.$apply();
@@ -35,7 +39,8 @@ angular.module('chat', [])
 
       chat.sendText = function() {
           console.log(chat.text);
-          chat.send({user: chat.user, text: chat.text, channel: chat.channelId});
+          chat.send({type: "message", user: chat.user,
+                     text: chat.text, channel: chat.channelId});
       };
 
       chat.getChannelList = function() {

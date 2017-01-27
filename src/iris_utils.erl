@@ -8,4 +8,5 @@ id() ->
 
 ts() ->
     {Mega, Sec, Micro} = os:timestamp(),
-    io_lib:format("~p.~6..0B", [Mega * 1000000 + Sec, Micro]).
+    Bin = io_lib:format("~p.~6..0B", [Mega * 1000000 + Sec, Micro]),
+    iolist_to_binary(Bin).
