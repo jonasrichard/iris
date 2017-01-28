@@ -17,19 +17,39 @@ angular.module('chat', [])
                   break;
 
               case "message":
-                  // if channel is selected append message otherwise badge++
+                  if (chat.channelId == json.channel) {
+                      chat.appendMessage(json.user, json.text, json.ts);
+                  } else {
+                      chat.update(chat.channels, json.channel, 'id', function(c) {
+                          if (c.unread) {
+                              c.unread++;
+                          } else {
+                              c.unread = 1;
+                          }
+                          return c;
+                      });
+                      console.log(chat.channels);
+                      $scope.$apply();
+                  }
                   break;
 
               case "channel.get":
                   chat.channels.push({id: json.channelId, name: json.channelName});
                   $scope.$apply();
                   break;
+
+              case "channel.history":
+                  for (i in json.messages) {
+                      var msg = json.messages[i];
+                      chat.appendMessage(msg.user, msg.text, msg.ts);
+                  }
+                  break;
+
           }
       };
 
       chat.login = function() {
           $("#log-in").modal('hide');
-          console.log(chat.user);
           chat.loginMsg(chat.user, chat.pass);
       };
 
@@ -37,10 +57,16 @@ angular.module('chat', [])
           chat.ws.close();
       };
 
+      chat.appendMessage = function(user, message, ts) {
+          $('#chat').append(
+              '<p class="text-success">' + user + ': ' + message + '</p>'
+          );
+      };
+
       chat.sendText = function() {
-          console.log(chat.text);
           chat.send({type: "message", user: chat.user,
                      text: chat.text, channel: chat.channelId});
+          chat.appendMessage(chat.user, chat.text, undefined);
       };
 
       chat.getChannelList = function() {
@@ -48,8 +74,8 @@ angular.module('chat', [])
       };
 
       chat.selectChannel = function(channelId) {
-          console.log(channelId);
-          chat.channelId = channelId;
+          chat.channelId = channelId.toString();
+          chat.send({type: "channel.history", "channel": chat.channelId});
       };
 
       chat.showLoginDialog = function() {
@@ -62,6 +88,16 @@ angular.module('chat', [])
 
       chat.send = function(obj) {
           chat.ws.send(JSON.stringify(obj));
+      };
+
+      chat.update = function(coll, idx, id, fun) {
+          for (var i = 0; i < coll.length; i++) {
+              if (coll[i][id] == idx) {
+                  var result = fun.apply(null, [coll[i]]);
+                  coll[i] = result;
+                  return;
+              }
+          }
       };
   });
 

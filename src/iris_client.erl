@@ -155,6 +155,17 @@ established(#{?TYPE := <<"channel.list">>} = _Event,
       ChannelIds),
     {next_state, established, State};
 
+established(#{?TYPE := <<"channel.history">>, ?CHANNEL := ChannelId}, State) ->
+    Msgs= iris_history:read_messages(ChannelId),
+    Reply = #{<<"type">> => <<"channel.history">>,
+              <<"messages">> => [
+                #{<<"type">> => <<"message">>,
+                  <<"user">> => Msg#message.user,
+                  <<"text">> => Msg#message.text,
+                  <<"ts">> => Msg#message.ts} || Msg <- Msgs]},
+    send(Reply, State),
+    {next_state, established, State};
+
 established(#{?TYPE := <<"request">>} = Event, State) ->
     case iris_req:handle(Event) of
         {ok, Result} ->
