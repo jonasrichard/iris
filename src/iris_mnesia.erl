@@ -27,18 +27,40 @@ ensure_schema() ->
 
 join(OtherNode) ->
     Nodes = mnesia:system_info(extra_db_nodes),
+    case mnesia:change_table_copy_type(schema, node(), disc_copies) of
+        {atomic, ok} ->
+            ok;
+        {aborted, {already_exists, _, _, _}} ->
+            ok;
+        Error ->
+            exit(Error)
+    end,
     case lists:member(OtherNode, Nodes) of
         false ->
             %% We adding a new node
             NewNodes = [OtherNode | Nodes],
             case mnesia:change_config(extra_db_nodes, NewNodes) of
                 {ok, _NewNodeList} ->
-                    mnesia:change_table_copy_type(schema, NewNodes, disc_copies);
-                Error ->
-                    exit(Error)
+                    Tables = mnesia:system_info(tables),
+                    Types = [table_type(OtherNode, T) || T <- Tables],
+                    DiscTypes = [Table || {Table, disc_copies} <- Types],
+                    lists:foreach(
+                      fun(Table) ->
+                              mnesia:add_table_copy(Table, node(), disc_copies)
+                      end, DiscTypes);
+                Error2 ->
+                    exit(Error2)
             end;
         true ->
             ok
+    end.
+
+table_type(OtherNode, Table) ->
+    case rpc:call(OtherNode, mnesia, table_info, [Table, storage_type]) of
+        {badrpc, Error} ->
+            exit(Error);
+        Result ->
+            Result
     end.
 
 ensure_tables() ->
