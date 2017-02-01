@@ -7,7 +7,7 @@
 start(_StartType, _StartArgs) ->
     application:start(lager),
     case os:getenv("OTHER_NODE") of
-        false ->
+        Empty when Empty =:= false orelse Empty =:= "" ->
             wait_for_mnesia();
         NodeEnv ->
             Node = list_to_atom(NodeEnv),
