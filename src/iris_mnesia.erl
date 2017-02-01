@@ -1,7 +1,8 @@
 -module(iris_mnesia).
 
 -export([ensure_schema/0,
-         ensure_tables/0]).
+         ensure_tables/0,
+         join/1]).
 
 -include("iris_db.hrl").
 
@@ -22,6 +23,22 @@ ensure_schema() ->
             end;
         N ->
             lager:info("mnesia already has extra db nodes: ~p", [N])
+    end.
+
+join(OtherNode) ->
+    Nodes = mnesia:system_info(extra_db_nodes) of
+    case lists:member(OtherNode, Nodes) of
+        false ->
+            %% We adding a new node
+            NewNodes = [OtherNode | Nodes],
+            case mnesia:change_config(extra_db_nodes, NewNodes) of
+                {ok, _NewNodeList} ->
+                    mnesia:change_table_copy_type(schema, NewNodes, disc_copies);
+                Error ->
+                    exit(Error)
+            end;
+        true ->
+            ok
     end.
 
 ensure_tables() ->

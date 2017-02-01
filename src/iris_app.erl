@@ -6,7 +6,13 @@
 
 start(_StartType, _StartArgs) ->
     application:start(lager),
-    wait_for_mnesia(),
+    case os:getenv("OTHER_NODE") of
+        false ->
+            wait_for_mnesia();
+        NodeEnv ->
+            Node = list_to_atom(NodeEnv),
+            iris_mnesia:join(Node)
+    end,
     iris_sup:start_link().
 
 stop(_State) ->
