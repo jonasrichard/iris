@@ -26,7 +26,7 @@ ensure_schema() ->
     end.
 
 join(OtherNode) ->
-    Nodes = mnesia:system_info(extra_db_nodes) of
+    Nodes = mnesia:system_info(extra_db_nodes),
     case lists:member(OtherNode, Nodes) of
         false ->
             %% We adding a new node
