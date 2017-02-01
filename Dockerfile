@@ -6,6 +6,7 @@ RUN cd /srv/iris && git pull
 RUN cd /srv/iris && make rebar compile release 
 
 COPY docker-init.sh /srv/docker-init.sh
+COPY iris.sh /srv/iris.sh
 
 ENTRYPOINT /bin/bash
 
