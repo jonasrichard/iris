@@ -9,6 +9,8 @@ start(_StartType, _StartArgs) ->
     case os:getenv("OTHER_NODE") of
         Empty when Empty =:= false orelse Empty =:= "" ->
             wait_for_mnesia();
+        "NO" ->
+            ok;
         NodeEnv ->
             Node = list_to_atom(NodeEnv),
             iris_mnesia:join(Node)
@@ -30,4 +32,3 @@ wait_for_mnesia() ->
     lager:info("Waiting for mnesia tables..."),
     mnesia:wait_for_tables(mnesia:system_info(local_tables), infinity),
     lager:info("Tables are ready").
-

@@ -1,6 +1,8 @@
 
 ## Iris
 
+Run with `RELX_CONFIG_PATH=$PWD/config/sys1.config VMARGS_PATH=$PWD/config/vm1.args _build/default/rel/iris/bin/iris console`.
+
 ### Protocol
 
 The protocol is a subset of Slack API.

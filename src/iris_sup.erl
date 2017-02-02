@@ -45,7 +45,7 @@ start_cowboy() ->
     Args = [
         iris_http_listener,
         5,
-        [{port, 8080}],
+        [{port, get_http_port()}],
         #{env => #{dispatch => Dispatch}}
     ],
     #{id => iris_cowboy,
@@ -54,3 +54,12 @@ start_cowboy() ->
       shutdown => brutal_kill,
       type => worker,
       modules => []}.
+
+get_http_port() ->
+    case application:get_env(iris, http) of
+        {ok, Keys} ->
+            proplists:get_value(port, Keys, 8080);
+        undefined ->
+            8080
+    end.
+

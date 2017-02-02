@@ -27,6 +27,17 @@ ensure_schema() ->
 
 join(OtherNode) ->
     Nodes = mnesia:system_info(extra_db_nodes),
+    lager:info("mnesia nodes: ~p", [Nodes]),
+
+    case lists:member(OtherNode, Nodes) of
+        false ->
+            lager:info("Add ~p to extra_db_nodes", [OtherNode]),
+            {ok, _} = mnesia:change_config(extra_db_nodes, [OtherNode | Nodes]);
+        _ ->
+            ok
+    end,
+
+    lager:info("Change schema table copy"),
     case mnesia:change_table_copy_type(schema, node(), disc_copies) of
         {atomic, ok} ->
             ok;
@@ -35,25 +46,17 @@ join(OtherNode) ->
         Error ->
             exit(Error)
     end,
-    case lists:member(OtherNode, Nodes) of
-        false ->
-            %% We adding a new node
-            NewNodes = [OtherNode | Nodes],
-            case mnesia:change_config(extra_db_nodes, NewNodes) of
-                {ok, _NewNodeList} ->
-                    Tables = mnesia:system_info(tables),
-                    Types = [table_type(OtherNode, T) || T <- Tables],
-                    DiscTypes = [Table || {Table, disc_copies} <- Types],
-                    lists:foreach(
-                      fun(Table) ->
-                              mnesia:add_table_copy(Table, node(), disc_copies)
-                      end, DiscTypes);
-                Error2 ->
-                    exit(Error2)
-            end;
-        true ->
-            ok
-    end.
+
+    Tables = mnesia:system_info(tables),
+    Types = [{T, table_type(OtherNode, T)} || T <- Tables],
+
+    lager:info("Migrating tables ~p", [Types]),
+    DiscTypes = [Table || {Table, disc_copies} <- Types],
+    lists:foreach(
+      fun(Table) ->
+              lager:info("Change ~p", [Table]),
+              mnesia:add_table_copy(Table, node(), disc_copies)
+      end, DiscTypes).
 
 table_type(OtherNode, Table) ->
     case rpc:call(OtherNode, mnesia, table_info, [Table, storage_type]) of
