@@ -5,8 +5,17 @@ angular.module('chat', [])
       var chat = $scope.chat;
 
       chat.channels = [];
-
+      chat.connected = false;
+          
       chat.ws = new WebSocket("ws://localhost:8080/ws");
+
+      chat.ws.onopen = function() {
+          chat.connected = true;
+      };
+
+      chat.ws.onclose = function() {
+          chat.connected = false;
+      };
 
       chat.ws.onmessage = function(msg) {
           var json = $.parseJSON(msg.data);
@@ -33,6 +42,11 @@ angular.module('chat', [])
                   }
                   break;
 
+              case "channel":
+                  chat.channels.push({id: json.id, name: json.name});
+                  $scope.$apply();
+                  break;
+
               case "channel.get":
                   chat.channels.push({id: json.channelId, name: json.channelName});
                   $scope.$apply();
@@ -48,6 +62,10 @@ angular.module('chat', [])
           }
       };
 
+      chat.open = function() {
+          chat.ws = new WebSocket("ws://localhost:8080/ws");
+      };
+
       chat.login = function() {
           $("#log-in").modal('hide');
           chat.loginMsg(chat.user, chat.pass);
@@ -55,6 +73,34 @@ angular.module('chat', [])
 
       chat.logout = function() {
           chat.ws.close();
+          chat.connected = false;
+      };
+
+      chat.ensureConnected = function() {
+          if (!chat.connected) {
+              chat.open();
+          }
+      };
+
+      chat.showLoginDialog = function() {
+          $('#log-in').modal();
+      };
+
+      chat.loginMsg = function(user, pass) {
+          if (!pass) {
+              pass = "";
+          }
+          chat.send({type: "auth", user: user, pass: pass});
+      };
+
+      chat.send = function(obj) {
+          chat.ws.send(JSON.stringify(obj));
+      };
+
+      // Chat message functions
+
+      chat.clearMessage = function() {
+          $('#chat').empty();
       };
 
       chat.appendMessage = function(user, message, ts) {
@@ -69,25 +115,34 @@ angular.module('chat', [])
           chat.appendMessage(chat.user, chat.text, undefined);
       };
 
+      // Channel functions
+
       chat.getChannelList = function() {
           chat.send({type: "channel.list"});
       };
 
       chat.selectChannel = function(channelId) {
           chat.channelId = channelId.toString();
+          chat.clearMessage();
           chat.send({type: "channel.history", "channel": chat.channelId});
       };
 
-      chat.showLoginDialog = function() {
-          $('#log-in').modal();
+      chat.showChannelDialog = function() {
+          $('#create-channel').modal();
       };
 
-      chat.loginMsg = function(user, pass) {
-          chat.send({type: "auth", user: user, pass: pass});
-      };
+      chat.createChannel = function() {
+          var users = chat.channelUsers.split(",")
+                          .map(function(u) { return u.trim(); });
+          var msg =
+              {
+                  type: "channel.create",
+                  name: chat.channelName,
+                  invitees: users
+              };
 
-      chat.send = function(obj) {
-          chat.ws.send(JSON.stringify(obj));
+          chat.send(msg);
+          $("#create-channel").modal('hide');
       };
 
       chat.update = function(coll, idx, id, fun) {
