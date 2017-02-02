@@ -39,7 +39,8 @@ start_cowboy() ->
     Dispatch = cowboy_router:compile([
         {'_', [
             {"/api/[...]", iris_handler, []},
-            {"/ws", iris_ws_handler, #{}}
+            {"/ws", iris_ws_handler, #{}},
+            {"/[...]", cowboy_static, {priv_dir, iris, "html"}}
         ]}
     ]),
     Args = [
