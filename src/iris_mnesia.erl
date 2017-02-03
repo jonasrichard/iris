@@ -48,15 +48,14 @@ join(OtherNode) ->
     end,
 
     Tables = mnesia:system_info(tables),
-    Types = [{T, table_type(OtherNode, T)} || T <- Tables],
+    Types = [{T, table_type(OtherNode, T)} || T <- Tables, t =/= schema],
 
     lager:info("Migrating tables ~p", [Types]),
-    DiscTypes = [Table || {Table, disc_copies} <- Types],
-    lists:foreach(
-      fun(Table) ->
-              lager:info("Change ~p", [Table]),
-              mnesia:add_table_copy(Table, node(), disc_copies)
-      end, DiscTypes).
+    lists:foreach(fun migrate_table/1, Types).
+
+migrate_table({Table, Type}) ->
+    lager:info("Change ~p", [Table]),
+    mnesia:add_table_copy(Table, node(), Type).
 
 table_type(OtherNode, Table) ->
     case rpc:call(OtherNode, mnesia, table_info, [Table, storage_type]) of

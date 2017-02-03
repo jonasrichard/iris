@@ -7,17 +7,15 @@ angular.module('chat', [])
       chat.channels = [];
       chat.connected = false;
           
-      chat.ws = new WebSocket("ws://localhost:8080/ws");
-
-      chat.ws.onopen = function() {
+      chat.onopen = function() {
           chat.connected = true;
       };
 
-      chat.ws.onclose = function() {
+      chat.onclose = function() {
           chat.connected = false;
       };
 
-      chat.ws.onmessage = function(msg) {
+      chat.onmessage = function(msg) {
           var json = $.parseJSON(msg.data);
           console.log(json);
           switch (json.type) {
@@ -62,8 +60,11 @@ angular.module('chat', [])
           }
       };
 
-      chat.open = function() {
-          chat.ws = new WebSocket("ws://localhost:8080/ws");
+      chat.open = function(url) {
+          chat.ws = new WebSocket(url);
+          chat.ws.onopen = chat.onopen;
+          chat.ws.onclose = chat.onclose;
+          chat.ws.onmessage = chat.onmessage;
       };
 
       chat.login = function() {
@@ -76,10 +77,11 @@ angular.module('chat', [])
           chat.connected = false;
       };
 
-      chat.ensureConnected = function() {
-          if (!chat.connected) {
-              chat.open();
+      chat.connect = function(host) {
+          if (chat.ws && chat.ws.readyState) {
+              chat.ws.close();
           }
+          chat.open("ws://localhost:" + host + "/ws");
       };
 
       chat.showLoginDialog = function() {
