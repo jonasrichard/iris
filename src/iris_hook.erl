@@ -115,8 +115,8 @@ sort_by_priority(Callbacks) ->
                        C1#callback.priority =< C2#callback.priority
                end, Callbacks).
 
-run_callbacks([], _Args) ->
-    ok;
+run_callbacks([], Args) ->
+    Args;
 run_callbacks([#callback{module = M, function = F} | Rest], Args) ->
     try erlang:apply(M, F, Args) of
         ok ->

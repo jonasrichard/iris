@@ -7,7 +7,7 @@
 add_hook_test_() ->
     {"Add more hooks with different priority",
      {setup,
-      fun() -> iris_hook:init('_') end,
+      fun() -> iris_hook:start_link() end,
       fun(_) ->
               iris_hook:add(first, ?MODULE, fun1, 10),
               iris_hook:add(first, ?MODULE, fun2, 20),

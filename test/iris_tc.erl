@@ -4,10 +4,14 @@
 -export([start_link/0,
          wait_for_frame/1,
          wait_for_json/1,
-         send/2]).
+         send/2,
+         close/1]).
 
 -export([init/1,
          handle_info/3,
+         handle_event/3,
+         handle_sync_event/4,
+         code_change/4,
          terminate/3,
          connected/2,
          ready/2]).
@@ -36,6 +40,13 @@ wait_for_json(Pid) ->
 send(Pid, Frame) ->
     gen_fsm:send_event(Pid, {send, Frame}).
 
+close(Pid) ->
+    gen_fsm:send_event(Pid, close).
+
+%%%
+%%% gen_fsm callbacks and states
+%%%
+
 init([Parent]) ->
     {ok, Pid} = gun:open("localhost", 8080),
     {ok, connected, #{conn => Pid, parent => Parent}}.
@@ -43,7 +54,7 @@ init([Parent]) ->
 connected({gun_up, Pid, _Proto}, StateData) ->
     gun:ws_upgrade(Pid, "/ws"),
     {next_state, connected, StateData};
-connected({gun_ws_upgrade, Pid, _, _}, #{parent := Parent} = StateData) ->
+connected({gun_ws_upgrade, Pid, _, _}, #{parent := _Parent} = StateData) ->
     case StateData of
         #{pending := Pending} ->
             error_logger:info_msg("Pending ~p", [Pending]),
@@ -77,15 +88,32 @@ ready({gun_ws, _Pid, Frame}, StateData) ->
             {next_state, ready, StateData}
     end;
 ready({send, Frame}, #{conn := Conn} = StateData) ->
-    gun:ws_send(Conn, Frame),
+    case Frame of
+        _ when is_map(Frame) ->
+            gun:ws_send(Conn, jsx:encode(Frame));
+        _ ->
+            gun:ws_send(Conn, Frame)
+    end,
     {next_state, ready, StateData};
 ready({wait_for, From}, StateData) ->
-    {next_state, ready, StateData#{wait_for => From}}.
+    {next_state, ready, StateData#{wait_for => From}};
+ready(close, #{conn := Conn} = StateData) ->
+    gun:close(Conn),
+    {stop, normal, StateData}.
 
 handle_info(Msg, StateName, StateData) ->
     error_logger:info_msg("Got info ~p", [Msg]),
     gen_fsm:send_event(self(), Msg),
     {next_state, StateName, StateData}.
+
+handle_event(_Event, Name, State) ->
+    {next_state, Name, State}.
+
+handle_sync_event(_Event, _From, Name, State) ->
+    {reply, ok, Name, State}.
+
+code_change(_OldVsn, Name, State, _Extra) ->
+    {ok, Name, State}.
 
 terminate(_Reason, _StateName, _StateData) ->
     ok.
