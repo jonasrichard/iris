@@ -16,8 +16,15 @@
          connected/2,
          ready/2]).
 
+-record(state, {
+          conn,             %% the gun process
+          parent,           %% the parent process
+          pending = [],     %% list of maps to send
+          wait_for          %% {pid, ref} to wait for
+         }).
+
 start_link() ->
-    gen_fsm:start_link(?MODULE, [self()], []).
+    gen_fsm:start_link(?MODULE, [self()], [{dbg, [trace, log]}]).
 
 wait_for_frame(Pid) ->
     Ref = erlang:make_ref(),
@@ -49,62 +56,53 @@ close(Pid) ->
 
 init([Parent]) ->
     {ok, Pid} = gun:open("localhost", 8080),
-    {ok, connected, #{conn => Pid, parent => Parent}}.
+    erlang:monitor(process, Pid),
+    {ok, connected, #state{conn = Pid, parent = Parent}}.
 
-connected({gun_up, Pid, _Proto}, StateData) ->
-    gun:ws_upgrade(Pid, "/ws"),
-    {next_state, connected, StateData};
-connected({gun_ws_upgrade, Pid, _, _}, #{parent := _Parent} = StateData) ->
-    case StateData of
-        #{pending := Pending} ->
-            error_logger:info_msg("Pending ~p", [Pending]),
-            lists:map(
-              fun(Frame) ->
-                      B = jsx:encode(Frame),
-                      gun:ws_send(Pid, {text, B})
-              end, Pending);
-        _ ->
-            ok
-    end,
-    {next_state, ready, maps:remove(pending, StateData)};
-connected({send, Frame}, StateData) ->
-    case StateData of
-        #{pending := Pending} ->
-            Pending2 = Pending ++ [Frame],
-            {next_state, connected, StateData#{pending => Pending2}};
-        _ ->
-            {next_state, connected, StateData#{pending => [Frame]}}
-    end;
-connected({wait_for, From}, StateData) ->
-    {next_state, connected, StateData#{wait_for => From}}.
+connected({send, Frame}, State) ->
+    {next_state, connected, State#state{pending = State#state.pending ++ [Frame]}};
 
-ready({gun_ws, _Pid, Frame}, StateData) ->
-    case StateData of
-        #{wait_for := {FromPid, Ref}} ->
-            FromPid ! {Ref, Frame},
-            NewStateData = maps:remove(wait_for, StateData),
-            {next_state, ready, NewStateData};
+connected({wait_for, From}, State) ->
+    {next_state, connected, State#state{wait_for = From}}.
+
+ready({text, Text}, State) ->
+    case State of
+        #state{wait_for = {FromPid, Ref}} ->
+            FromPid ! {Ref, {text, Text}},
+            {next_state, ready, State#state{wait_for = undefined}};
         _ ->
-            {next_state, ready, StateData}
+            {next_state, ready, State}
     end;
-ready({send, Frame}, #{conn := Conn} = StateData) ->
-    case Frame of
-        _ when is_map(Frame) ->
-            gun:ws_send(Conn, jsx:encode(Frame));
-        _ ->
-            gun:ws_send(Conn, Frame)
-    end,
-    {next_state, ready, StateData};
-ready({wait_for, From}, StateData) ->
-    {next_state, ready, StateData#{wait_for => From}};
-ready(close, #{conn := Conn} = StateData) ->
+
+ready({send, Frame}, #state{conn = Conn} = State) ->
+    gun:ws_send(Conn, {text, jsx:encode(Frame)}),
+    {next_state, ready, State};
+
+ready({wait_for, From}, State) ->
+    {next_state, ready, State#state{wait_for = From}};
+
+ready(close, #state{conn = Conn} = State) ->
     gun:close(Conn),
-    {stop, normal, StateData}.
+    {stop, normal, State}.
 
-handle_info(Msg, StateName, StateData) ->
+handle_info({gun_up, Pid, http}, connected, #state{conn = Pid} = State) ->
+    gun:ws_upgrade(Pid, "/ws"),
+    {next_state, connected, State};
+
+handle_info({gun_ws_upgrade, Pid, ok, _}, connected, #state{conn = Pid} = State) ->
+    lists:foreach(
+      fun(Frame) ->
+              gun:ws_send(Pid, {text, jsx:encode(Frame)})
+      end, State#state.pending),
+    {next_state, ready, State#state{pending = []}};
+
+handle_info({gun_ws, _Pid, {text, Text}}, ready, State) ->
+    gen_fsm:send_event(self(), {text, Text}),
+    {next_state, ready, State};
+
+handle_info(Msg, StateName, State) ->
     error_logger:info_msg("Got info ~p", [Msg]),
-    gen_fsm:send_event(self(), Msg),
-    {next_state, StateName, StateData}.
+    {next_state, StateName, State}.
 
 handle_event(_Event, Name, State) ->
     {next_state, Name, State}.
@@ -115,6 +113,6 @@ handle_sync_event(_Event, _From, Name, State) ->
 code_change(_OldVsn, Name, State, _Extra) ->
     {ok, Name, State}.
 
-terminate(_Reason, _StateName, _StateData) ->
+terminate(_Reason, _StateName, _State) ->
     ok.
 

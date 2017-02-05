@@ -15,6 +15,11 @@ auth_test_() ->
      {setup, fun setup/0, fun teardown/1,
       fun(Conn) ->
               {ok, Hello} = iris_tc:wait_for_json(Conn),
-              ?_assertMatch(#{<<"type">> := <<"hello">>}, Hello)
+              iris_tc:send(Conn, #{<<"type">> => <<"auth">>,
+                                   <<"user">> => <<"user1">>,
+                                   <<"pass">> => <<"pass1">>}),
+              {ok, Session} = iris_tc:wait_for_json(Conn),
+              [?_assertMatch(#{<<"type">> := <<"hello">>}, Hello),
+               ?_assertMatch(#{<<"sessionId">> := _}, Session)]
       end
      }}.
