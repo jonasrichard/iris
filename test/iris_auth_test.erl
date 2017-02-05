@@ -23,3 +23,17 @@ auth_test_() ->
                ?_assertMatch(#{<<"sessionId">> := _}, Session)]
       end
      }}.
+
+auth_fail_test_() ->
+    {"Unsuccessful authentication",
+     {setup, fun setup/0, fun teardown/1,
+      fun(Conn) ->
+              {ok, Hello} = iris_tc:wait_for_json(Conn),
+              iris_tc:send(Conn, #{<<"type">> => <<"auth">>,
+                                   <<"user">> => <<"no">>,
+                                   <<"pass">> => <<"pass1">>}),
+              {ok, Error} = iris_tc:wait_for_json(Conn),
+              [?_assertMatch(#{<<"type">> := <<"hello">>}, Hello),
+               ?_assertMatch(#{<<"type">> := <<"error">>}, Error)]
+      end
+     }}.
