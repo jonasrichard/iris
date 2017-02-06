@@ -15,7 +15,7 @@ init(Req, _State) ->
     {cowboy_websocket, Req, #state{}}.
 
 websocket_init(State) ->
-    {ok, Pid} = iris_client:start_link(websocket, self()),
+    {ok, Pid} = iris_client_sup:start_child(websocket, self()),
     {ok, State#state{client = Pid}}.
 
 websocket_handle(_Frame = {text, Json}, State) ->

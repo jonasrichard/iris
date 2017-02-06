@@ -1,12 +1,12 @@
--module(iris_channel_sup).
+-module(iris_client_sup).
 -behaviour(supervisor).
 
 -export([start_link/0,
-         start_channel/1]).
+         start_child/2]).
 
 -export([init/1]).
 
--include("iris_db.hrl").
+%-include("iris_db.hrl").
 
 %%%
 %%% API functions
@@ -15,14 +15,8 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_channel(ChannelId) ->
-    case iris_channel:get_channel_proc(ChannelId) of
-        {ok, #channel_proc{pid = Pid}} ->
-            {ok, Pid};
-        {error, not_found} ->
-            {ok, Pid} = supervisor:start_child(?MODULE, [ChannelId]),
-            {ok, Pid}
-    end.
+start_child(Protocol, Pid) ->
+    supervisor:start_child(?MODULE, [Protocol, Pid]).
 
 %%%
 %%% supervisor callbacks
@@ -32,12 +26,11 @@ init(_Args) ->
     {ok, {#{strategy => simple_one_for_one,
             intensity => 5,
             period => 1000},
-         [#{id => iris_channel,
-            start => {iris_channel, start_link, []},
+         [#{id => iris_client,
+            start => {iris_client, start_link, []},
             restart => temporary,
             shutdown => 1000,  % infinity?
             type => worker,
             modules => []}
          ]}
     }.
-

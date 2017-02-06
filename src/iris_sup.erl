@@ -18,6 +18,8 @@ init(_Args) ->
            child(iris_db, []),
            child(iris_loader, []),
            child_sup(iris_channel_sup, []),
+           child_sup(iris_client_sup, []),
+           child(iris_metrics, []),
            start_cowboy()
           ]}
          }.
