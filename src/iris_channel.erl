@@ -6,7 +6,8 @@
          read_channel/1,
          read_user_channel/1,
          get_channel_proc/1,
-         send_message/3]).
+         send_message/3,
+         notify_members/1]).
 
 -export([init/1,
          handle_info/2,
@@ -67,6 +68,10 @@ read_user_channel(User) ->
 %% Send a message to a channel From a user
 send_message(Pid, Message, From) ->
     gen_server:call(Pid, {send, Message, From}).
+
+%% Send the channel data to all the members
+notify_members(#channel{members = Members} = Channel) ->
+    broadcast_send(Members, iris_message:channel(Channel)).
 
 %%%
 %%% gen_server callbacks
@@ -147,6 +152,9 @@ add_user_channel(User, ChannelId) ->
                     ok
             end
     end.
+
+broadcast_send(Members, Message) ->
+    [send_to_user(User, Message) || User <- Members].
 
 broadcast_send(From, Members, Message) ->
     [send_to_user(User, Message) || User <- Members, User =/= From].

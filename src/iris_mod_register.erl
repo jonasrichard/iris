@@ -31,9 +31,7 @@ authenticate(User, Pass) ->
         {<<"user", _/binary>>, _} ->
             {stop, true};
         _ ->
-            %% Give the chance to other members of the hook
-            %% to authenticate the user
-            ok
+            {stop, false}
     end.
 
 handle_message(_From, _To, Message) ->

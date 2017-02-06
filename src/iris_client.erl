@@ -67,6 +67,9 @@ init([Arg]) ->
 handle_info({'DOWN', _Ref, process, _Pid, _Reason}, _Name,
             #state{socket = _Pid} = State) ->
     {stop, normal, State};
+handle_info(kick_out, _Name, State) ->
+    lager:info("User ~p has been kicked out", [State#state.user]),
+    {stop, normal, State};
 handle_info(Info, Name, State) ->
     lager:info("~p", [Info]),
     {next_state, Name, State}.
@@ -91,8 +94,7 @@ terminate(_Reason, _Name, #state{sid = SessionId} = _State) ->
 connected(#{?TYPE := <<"auth">>} = Event, State) ->
     #{<<"user">> := User, <<"pass">> := Pass} = Event,
     case iris_hook:run(authenticate, [User, Pass]) of
-        ok ->
-            %% no registered hook could generate a token
+        {ok, false} ->
             reply(error, [<<"Authentication error">>], State),
             {next_state, connected, State};
         {ok, Token} ->
@@ -130,7 +132,7 @@ established(#{?TYPE := <<"channel.create">>} = Event,
             #state{user = User} = State) ->
     case iris_channel:create_channel(Event, User) of
         {ok, Channel} ->
-            send(iris_message:channel(Channel), State),
+            iris_channel:notify_members(Channel),
             {next_state, established, State};
         {error, _Reason} ->
             reply(error, [<<"Error during creating channel">>], State),
@@ -176,7 +178,7 @@ established(#{?TYPE := <<"request">>} = Event, State) ->
             {next_state, established, State}
     end;
 
-established({route, #{?TYPE := <<"message">>} = Message}, State) ->
+established({route, Message}, State) ->
     send(Message, State),
     {next_state, established, State};
 
