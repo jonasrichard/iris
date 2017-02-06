@@ -10,7 +10,8 @@
       mnesia,
       lager,
       cowboy,
-      jsx
+      jsx,
+      exometer_core
   ]},
   {mod, {iris_app, []}},
   {env, []}
