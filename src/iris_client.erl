@@ -64,8 +64,8 @@ init([Arg]) ->
             {stop, unknown_init_args}
     end.
 
-handle_info({'DOWN', _Ref, process, _Pid, _Reason}, _Name,
-            #state{socket = _Pid} = State) ->
+handle_info({'DOWN', _Ref, process, Pid, _Reason}, _Name,
+            #state{socket = Pid} = State) ->
     {stop, normal, State};
 handle_info(kick_out, _Name, State) ->
     lager:info("User ~p has been kicked out", [State#state.user]),
@@ -111,43 +111,79 @@ connected(#{?TYPE := <<"auth">>} = Event, State) ->
 connected(_Event, State) ->
     {next_state, connected, State}.
 
-established(#{?TYPE := <<"message">>} = Event, #state{user = User} = State) ->
-    case Event of
-        #{<<"subtype">> := <<"ack">>} ->
-            %% user has read the message
-            send_receipt(Event, State),
+established(Event, State) when is_map(Event) ->
+    try iris_message:parse(Event) of
+        #{type := <<"message">>, subtype := <<"send">>} = Message ->
+            %% user sent a message
+            do_handle_user_sent_message(Message, State);
+
+        #{type := <<"message">>, subtype := <<"sent">>} = MsgAck ->
+            do_handle_ack_message(MsgAck, State);
+
+        #{type := <<"message">>, subtype := <<"read">>} = _MsgRead ->
+            %% TODO: maintain the read pointer of the user per channel
             {next_state, established, State};
-        _ ->
-            %% no subtype, it is a new message
-            Event2 = ensure_ts(Event),
-            case iris_hook:run(message_received, [User, Event2]) of
-                drop ->
-                    %% we drop the message
-                    {next_state, established, State};
-                _ ->
-                    case send_to_channel(Event2, User, State) of
-                        {ok, NewState} ->
-                            {next_state, established, NewState};
-                        {_Reason, NewState} ->
-                            reply(error, [<<"No such channel">>], NewState),
-                            {next_state, established, NewState}
-                    end
-            end
+
+        #{type := <<"channel.create">>} = CrtChannel ->
+            do_handle_create_channel(CrtChannel, State);
+        
+        #{type := <<"channel.list">>} ->
+            do_handle_list_channels(State);
+        
+        #{type := <<"channel.history">>} = History ->
+            do_handle_history(History, State)
+
+    catch
+        Type:Reason ->
+            lager:error("Message parsing error: ~p ~p ~p",
+                        [Type, Reason, Event]),
+            reply(error, [<<"Invalid message">>], State),
+            {next_state, established, State}
     end;
 
-established(#{?TYPE := <<"channel.create">>} = Event,
-            #state{user = User} = State) ->
-    case iris_channel:create_channel(Event, User) of
+established({route, Message}, State) ->
+    send(Message, State),
+    {next_state, established, State};
+
+established(Event, State) ->
+    lager:warning("Unhandler event ~p", [Event]),
+    {next_state, established, State}.
+
+%%%
+%%% Internal functions
+%%%
+
+do_handle_user_sent_message(Message, #state{user = User} = State) ->
+    Message2 = ensure_ts(Message),
+    case iris_hook:run(message_received, [User, Message2]) of
+        drop ->
+            %% we drop the message
+            {next_state, established, State};
+        _ ->
+            case send_to_channel(Message2, User, State) of
+                {ok, NewState} ->
+                    {next_state, established, NewState};
+                {_Reason, NewState} ->
+                    reply(error, [<<"No such channel">>], NewState),
+                    {next_state, established, NewState}
+            end
+    end.
+
+do_handle_ack_message(Ack, State) ->
+    send_receipt(Ack, State),
+    {next_state, established, State}.
+
+do_handle_create_channel(CrtChannel, #state{user = User} = State) ->
+    case iris_channel:create_channel(CrtChannel, User) of
         {ok, Channel} ->
             iris_channel:notify_members(Channel),
             {next_state, established, State};
         {error, _Reason} ->
             reply(error, [<<"Error during creating channel">>], State),
             {next_state, established, State}
-    end;
+    end.
 
-established(#{?TYPE := <<"channel.list">>} = _Event,
-            #state{user = User} = State) ->
+do_handle_list_channels(#state{user = User} = State) ->
     ChannelIds = iris_channel:read_user_channel(User),
     lists:foreach(
       fun(ChannelId) ->
@@ -162,9 +198,9 @@ established(#{?TYPE := <<"channel.list">>} = _Event,
               end
       end,
       ChannelIds),
-    {next_state, established, State};
+    {next_state, established, State}.
 
-established(#{?TYPE := <<"channel.history">>, ?CHANNEL := ChannelId}, State) ->
+do_handle_history(#{channel := ChannelId}, State) ->
     Msgs= iris_history:read_messages(ChannelId),
     Reply = #{<<"type">> => <<"channel.history">>,
               <<"messages">> => [
@@ -173,32 +209,12 @@ established(#{?TYPE := <<"channel.history">>, ?CHANNEL := ChannelId}, State) ->
                   <<"text">> => Msg#message.text,
                   <<"ts">> => Msg#message.ts} || Msg <- Msgs]},
     send(Reply, State),
-    {next_state, established, State};
-
-established(#{?TYPE := <<"request">>} = Event, State) ->
-    case iris_req:handle(Event) of
-        {ok, Result} ->
-            reply(response, Result, State),
-            {next_state, established, State};
-        {error, Reason} ->
-            reply(error, Reason, State),
-            {next_state, established, State}
-    end;
-
-established({route, Message}, State) ->
-    send(Message, State),
-    {next_state, established, State};
-
-established(_Event, State) ->
     {next_state, established, State}.
 
-%%%
-%%% Internal functions
-%%%
-
 %% TODO: monitor the channel process if we store it
-send_to_channel(Message, From, #state{channels = Channels} = State) ->
-    #{?CHANNEL := ChannelId} = Message,
+send_to_channel(#{channel := ChannelId} = Message,
+                From,
+                #state{channels = Channels} = State) ->
     case Channels of
         #{ChannelId := Pid} ->
             %% TODO send message to channel hook?
@@ -255,16 +271,16 @@ reply(error, Args, #state{protocol = {json, _}} = State) ->
     send(Response, State).
 
 %% Ensure that message has timestamp
-ensure_ts(#{<<"ts">> := _} = Message) ->
+ensure_ts(#{ts := _} = Message) ->
     Message;
 ensure_ts(Message) ->
-    Message#{<<"ts">> => iris_utils:ts()}.
+    Message#{ts => iris_utils:ts()}.
 
 read_ack(Message) ->
-    #{<<"type">> => <<"message">>,
-      <<"subtype">> => <<"read">>,
-      <<"user">> => maps:get(<<"user">>, Message),
-      <<"reader">> => maps:get(<<"reader">>, Message),
-      <<"channel">> => maps:get(<<"channel">>, Message),
-      <<"ts">> => maps:get(<<"ts">>, Message)}.
+    #{type => <<"message">>,
+      subtype => <<"read">>,
+      user => maps:get(user, Message),
+      reader => maps:get(reader, Message),
+      channel => maps:get(channel, Message),
+      ts => maps:get(ts, Message)}.
 

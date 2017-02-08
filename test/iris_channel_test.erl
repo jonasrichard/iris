@@ -109,26 +109,27 @@ send_and_wait(Conn, Msg) ->
     Reply.
 
 msg_auth(User) ->
-    #{<<"type">> => <<"auth">>,
-      <<"user">> => list_to_binary(User),
-      <<"pass">> => <<"pass">>}.
+    #{type => <<"auth">>,
+      user => list_to_binary(User),
+      pass => <<"pass">>}.
 
 msg_create_channel(User, Name, Members) ->
-    #{<<"type">> => <<"channel.create">>,
-      <<"user">> => list_to_binary(User),
-      <<"name">> => list_to_binary(Name),
-      <<"invitees">> => [list_to_binary(M) || M <- Members]}.
+    #{type => <<"channel.create">>,
+      user => list_to_binary(User),
+      name => list_to_binary(Name),
+      invitees => [list_to_binary(M) || M <- Members]}.
 
 msg_message(User, Channel, Text) ->
-    #{<<"type">> => <<"message">>,
-      <<"channel">> => Channel,
-      <<"user">> => list_to_binary(User),
-      <<"text">> => list_to_binary(Text)}.
+    #{type => <<"message">>,
+      subtype => <<"send">>,
+      channel => Channel,
+      user => list_to_binary(User),
+      text => list_to_binary(Text)}.
 
-msg_ack(User, Msg) ->
-    #{<<"user">> => maps:get(<<"user">>, Msg),
-      <<"reader">> => list_to_binary(User),
-      <<"type">> => <<"message">>,
-      <<"subtype">> => <<"ack">>,
-      <<"ts">> => maps:get(<<"ts">>, Msg),
-      <<"channel">> => maps:get(<<"channel">>, Msg)}.
+msg_read(User, Msg) ->
+    #{user => list_to_binary(User),
+      to => maps:get(<<"user">>, Msg),
+      type => <<"message">>,
+      subtype => <<"read">>,
+      ts => maps:get(<<"ts">>, Msg),
+      channel => maps:get(<<"channel">>, Msg)}.

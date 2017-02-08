@@ -61,7 +61,7 @@ get_channel_proc(Id) ->
     end.
 
 %% Create a channel in the database
-create_channel(#{<<"channelId">> := Id} = Message, Creator) ->
+create_channel(#{channel := Id} = Message, Creator) ->
     create_channel(Message, Id, Creator);
 create_channel(Message, Creator) ->
     create_channel(Message, iris_utils:id(), Creator).
@@ -111,19 +111,19 @@ handle_cast(_Msg, State) ->
 
 handle_call({send, Message, From}, _From, State) ->
     lager:debug("Sending message (~p) ~p", [Message, From]),
-    #{<<"text">> := Text, <<"ts">> := TS} = Message,
+    #{text := Text, ts := TS} = Message,
     Msg = #message{
              user = From,
              text = Text,
              ts = TS},
     ChannelId = State#state.id,
     iris_history:append_message(ChannelId, Msg),
-    RoutedMessage = Message#{<<"user">> => From},
+    RoutedMessage = Message#{user => From},
     broadcast_send(From, State#state.members, RoutedMessage),
     {reply, ok, State};
 handle_call({send_direct, Message}, _From, State) ->
     case Message of
-        #{<<"user">> := To} ->
+        #{user := To} ->
             send_to_user(To, Message),
             %% TODO should be not ok if the user is offline
             {reply, ok, State};
@@ -147,7 +147,7 @@ create_channel(Message, Id, Creator) ->
     case read_channel(Id) of
         {error, not_found} ->
             %% TODO implement a message validation layer
-            #{<<"name">> := Name, <<"invitees">> := Invitees} = Message,
+            #{name := Name, invitees := Invitees} = Message,
             Channel = insert_channel(Id, Name, [Creator | Invitees]),
             {ok, Channel};
         {ok, _} ->
@@ -196,4 +196,3 @@ send_to_user(User, Message) ->
             %% the user is offline
             ok
     end.
-
