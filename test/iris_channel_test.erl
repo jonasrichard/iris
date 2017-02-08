@@ -44,7 +44,7 @@ send_message_test_() ->
                           <<"channel">> => ChannelId},
               History = send_and_wait(Conn, HistReq),
               ?debugVal(History),
-              
+
               Last = lists:last(maps:get(<<"messages">>, History)),
 
               [?_assertMatch(#{<<"text">> := <<"Hey man">>}, Last),
@@ -64,7 +64,7 @@ send_message_other_get_test_() ->
               {ok, Conn2} = iris_tc:start_link(),
               _ = iris_tc:wait_for_json(Conn2),
               _ = send_and_wait(Conn2, msg_auth("user2")),
-              
+
               %% user1 creates channel and invites user2
               Create = msg_create_channel("user1", "friends3", ["user2"]),
               #{<<"id">> := ChannelId} = Channel = send_and_wait(Conn1, Create),
@@ -79,13 +79,27 @@ send_message_other_get_test_() ->
               %% user2 gets the message
               {ok, Msg2} = iris_tc:wait_for_json(Conn2),
 
+              %% user2 sends the message receipt
+              iris_tc:send(Conn2, msg_ack("user2", Msg2)),
+
+              %% user1 gets the message ack
+              {ok, Rcpt} = iris_tc:wait_for_json(Conn1),
+
               ?debugVal(Msg2),
+              ?debugVal(Rcpt),
+
+              #{<<"ts">> := Msg2Ts} = Msg2,
 
               [?_assertEqual(Channel, Channel2),
                ?_assertMatch(#{<<"channel">> := ChannelId,
                                <<"user">> := <<"user1">>,
                                <<"text">> := <<"For sale">>,
-                               <<"type">> := <<"message">>}, Msg2)]
+                               <<"type">> := <<"message">>}, Msg2),
+               ?_assertMatch(#{<<"channel">> := ChannelId,
+                               <<"reader">> := <<"user2">>,
+                               <<"type">> := <<"message">>,
+                               <<"subtype">> := <<"read">>,
+                               <<"ts">> := Msg2Ts}, Rcpt)]
       end
      }}.
 
@@ -110,3 +124,11 @@ msg_message(User, Channel, Text) ->
       <<"channel">> => Channel,
       <<"user">> => list_to_binary(User),
       <<"text">> => list_to_binary(Text)}.
+
+msg_ack(User, Msg) ->
+    #{<<"user">> => maps:get(<<"user">>, Msg),
+      <<"reader">> => list_to_binary(User),
+      <<"type">> => <<"message">>,
+      <<"subtype">> => <<"ack">>,
+      <<"ts">> => maps:get(<<"ts">>, Msg),
+      <<"channel">> => maps:get(<<"channel">>, Msg)}.

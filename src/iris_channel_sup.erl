@@ -15,14 +15,8 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_channel(ChannelId) ->
-    case iris_channel:get_channel_proc(ChannelId) of
-        {ok, #channel_proc{pid = Pid}} ->
-            {ok, Pid};
-        {error, not_found} ->
-            {ok, Pid} = supervisor:start_child(?MODULE, [ChannelId]),
-            {ok, Pid}
-    end.
+start_channel(Channel) ->
+    supervisor:start_child(?MODULE, [Channel]).
 
 %%%
 %%% supervisor callbacks

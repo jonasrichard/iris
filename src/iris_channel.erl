@@ -5,8 +5,10 @@
          create_channel/2,
          read_channel/1,
          read_user_channel/1,
+         ensure_channel_proc/1,
          get_channel_proc/1,
          send_message/3,
+         send_direct_message/2,
          notify_members/1]).
 
 -export([init/1,
@@ -29,10 +31,25 @@
 %%% API functions
 %%%
 
-start_link(Id) ->
-    {ok, Pid} = gen_server:start_link(?MODULE, [Id], []),
-    ok = mnesia:dirty_write(#channel_proc{channel_id = Id, pid = Pid}),
+start_link(Channel) ->
+    {ok, Pid} = gen_server:start_link(?MODULE, [Channel], []),
+    %% TODO: if write fails we will have a orphaned channel process
+    ok = mnesia:dirty_write(#channel_proc{channel_id = Channel#channel.id,
+                                          pid = Pid}),
     {ok, Pid}.
+
+ensure_channel_proc(ChannelId) ->
+    case get_channel_proc(ChannelId) of
+        {ok, #channel_proc{pid = Pid}} ->
+            {ok, Pid};
+        {error, not_found} ->
+            case read_channel(ChannelId) of
+                {error, not_found} ->
+                    {error, not_found};
+                {ok, Channel} ->
+                    iris_channel_sup:start_channel(Channel)
+            end
+    end.
 
 %% Get the pid of the channel if it has been spawned already.
 get_channel_proc(Id) ->
@@ -69,6 +86,9 @@ read_user_channel(User) ->
 send_message(Pid, Message, From) ->
     gen_server:call(Pid, {send, Message, From}).
 
+send_direct_message(Pid, Message) ->
+    gen_server:call(Pid, {send_direct, Message}).
+
 %% Send the channel data to all the members
 notify_members(#channel{members = Members} = Channel) ->
     broadcast_send(Members, iris_message:channel(Channel)).
@@ -77,9 +97,8 @@ notify_members(#channel{members = Members} = Channel) ->
 %%% gen_server callbacks
 %%%
 
-init([Id]) ->
-    lager:debug("Spawning channel ~p", [Id]),
-    {ok, Channel} = read_channel(Id),
+init([Channel]) ->
+    lager:debug("Spawning channel ~p", [Channel]),
 
     {ok, #state{id = Channel#channel.id,
                 members = Channel#channel.members}}.
@@ -102,6 +121,15 @@ handle_call({send, Message, From}, _From, State) ->
     RoutedMessage = Message#{<<"user">> => From},
     broadcast_send(From, State#state.members, RoutedMessage),
     {reply, ok, State};
+handle_call({send_direct, Message}, _From, State) ->
+    case Message of
+        #{<<"user">> := To} ->
+            send_to_user(To, Message),
+            %% TODO should be not ok if the user is offline
+            {reply, ok, State};
+        _ ->
+            {reply, no_recipient, State}
+    end;
 handle_call(_Req, _From, State) ->
     {reply, ok, State}.
 

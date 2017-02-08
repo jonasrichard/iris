@@ -35,4 +35,3 @@ channel(Channel) ->
       <<"members">> => Channel#channel.members,
       <<"created_ts">> => Channel#channel.created_ts,
       <<"last_ts">> => Channel#channel.last_ts}.
-

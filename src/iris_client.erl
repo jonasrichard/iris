@@ -111,20 +111,27 @@ connected(#{?TYPE := <<"auth">>} = Event, State) ->
 connected(_Event, State) ->
     {next_state, connected, State}.
 
-established(#{?TYPE := <<"message">>} = Event,
-            #state{user = User} = State) ->
-    Event2 = ensure_ts(Event),
-    case iris_hook:run(message_received, [User, Event2]) of
-        drop ->
-            %% we drop the message
+established(#{?TYPE := <<"message">>} = Event, #state{user = User} = State) ->
+    case Event of
+        #{<<"subtype">> := <<"ack">>} ->
+            %% user has read the message
+            send_receipt(Event, State),
             {next_state, established, State};
         _ ->
-            case send_to_channel(Event2, User, State) of
-                {ok, NewState} ->
-                    {next_state, established, NewState};
-                {_Reason, NewState} ->
-                    reply(error, [<<"No such channel">>], NewState),
-                    {next_state, established, NewState}
+            %% no subtype, it is a new message
+            Event2 = ensure_ts(Event),
+            case iris_hook:run(message_received, [User, Event2]) of
+                drop ->
+                    %% we drop the message
+                    {next_state, established, State};
+                _ ->
+                    case send_to_channel(Event2, User, State) of
+                        {ok, NewState} ->
+                            {next_state, established, NewState};
+                        {_Reason, NewState} ->
+                            reply(error, [<<"No such channel">>], NewState),
+                            {next_state, established, NewState}
+                    end
             end
     end;
 
@@ -189,6 +196,7 @@ established(_Event, State) ->
 %%% Internal functions
 %%%
 
+%% TODO: monitor the channel process if we store it
 send_to_channel(Message, From, #state{channels = Channels} = State) ->
     #{?CHANNEL := ChannelId} = Message,
     case Channels of
@@ -197,16 +205,36 @@ send_to_channel(Message, From, #state{channels = Channels} = State) ->
             Result = iris_channel:send_message(Pid, Message, From),
             {Result, State};
         _ ->
-            case iris_channel:get_channel_proc(ChannelId) of
-                {ok, #channel_proc{pid = Pid}} ->
+            case iris_channel:ensure_channel_proc(ChannelId) of
+                {ok, Pid} ->
                     %% The channel is started already, store its pid
                     NewChannels = Channels#{ChannelId => Pid},
                     Result = iris_channel:send_message(Pid, Message, From),
                     {Result, State#state{channels = NewChannels}};
-                {error, not_found} ->
-                    {ok, Pid} = iris_channel_sup:start_channel(ChannelId),
-                    Result = iris_channel:send_message(Pid, Message, From),
-                    {Result, State}
+                Other ->
+                    lager:error("Send error: ~p", [Other]),
+                    {error, State}
+            end
+    end.
+
+send_receipt(Message, #state{channels = Channels} = State) ->
+    Rcpt = read_ack(Message),
+    #{?CHANNEL := ChannelId} = Message,
+    case Channels of
+        #{ChannelId := Pid} ->
+            %% TODO send message to channel hook?
+            Result = iris_channel:send_direct_message(Pid, Rcpt),
+            {Result, State};
+        _ ->
+            case iris_channel:ensure_channel_proc(ChannelId) of
+                {ok, Pid} ->
+                    %% The channel is started already, store its pid
+                    NewChannels = Channels#{ChannelId => Pid},
+                    Result = iris_channel:send_direct_message(Pid, Rcpt),
+                    {Result, State#state{channels = NewChannels}};
+                Other ->
+                    lager:error("Send error: ~p", [Other]),
+                    {error, State}
             end
     end.
 
@@ -231,4 +259,12 @@ ensure_ts(#{<<"ts">> := _} = Message) ->
     Message;
 ensure_ts(Message) ->
     Message#{<<"ts">> => iris_utils:ts()}.
+
+read_ack(Message) ->
+    #{<<"type">> => <<"message">>,
+      <<"subtype">> => <<"read">>,
+      <<"user">> => maps:get(<<"user">>, Message),
+      <<"reader">> => maps:get(<<"reader">>, Message),
+      <<"channel">> => maps:get(<<"channel">>, Message),
+      <<"ts">> => maps:get(<<"ts">>, Message)}.
 
