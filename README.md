@@ -164,6 +164,26 @@ In this case a read receipt should be sent to the users who authored messages.
 
 Client needs to send that it received the messages.
 
+```
+ sender         server          receiver
+   |               |               | 
+   |     send      |               |
+   |-------------->|               | 
+   |               |               | 
+   |     stored    |               | 
+   |<--------------|    incoming   | 
+   |               |-------------->| 
+   |               |               | 
+   |               |    received   | 
+   |    received   |<--------------| 
+   |<--------------|               | 
+   |               |     read      | * client read
+   |     read      |<--------------| 
+   |<--------------|               | 
+   |               |               | 
+
+```
+
 ```javascript
 {
     "type": "message",

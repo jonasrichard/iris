@@ -65,7 +65,10 @@ connected({send, Frame}, State) ->
 connected({wait_for, From}, State) ->
     {next_state, connected, State#state{wait_for = From}}.
 
-ready({text, Text}, State) ->
+ready({text, Text}, #state{conn = _Pid} = State) ->
+    %% TODO: here should handle decoded jsons
+    %%       once we get it, decode it!
+    %% gun:ws_send(Pid, jsx:encode()),
     case State of
         #state{wait_for = {FromPid, Ref}} ->
             FromPid ! {Ref, {text, Text}},
