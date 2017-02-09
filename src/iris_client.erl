@@ -120,9 +120,8 @@ established(Event, State) when is_map(Event) ->
         #{type := <<"message">>, subtype := <<"sent">>} = MsgAck ->
             do_handle_ack_message(MsgAck, State);
 
-        #{type := <<"message">>, subtype := <<"read">>} = _MsgRead ->
-            %% TODO: maintain the read pointer of the user per channel
-            {next_state, established, State};
+        #{type := <<"message">>, subtype := <<"read">>} = MsgRead ->
+            do_handle_message_read(MsgRead, State);
 
         #{type := <<"channel.create">>} = CrtChannel ->
             do_handle_create_channel(CrtChannel, State);
@@ -170,8 +169,8 @@ do_handle_user_sent_message(Message, #state{user = User} = State) ->
     end.
 
 do_handle_ack_message(Ack, State) ->
-    send_receipt(Ack, State),
-    {next_state, established, State}.
+    {_, State2} = send_direct_message(read_ack(Ack), State),
+    {next_state, established, State2}.
 
 do_handle_create_channel(CrtChannel, #state{user = User} = State) ->
     case iris_channel:create_channel(CrtChannel, User) of
@@ -210,49 +209,51 @@ do_handle_history(#{channel := ChannelId}, State) ->
                   <<"ts">> => Msg#message.ts} || Msg <- Msgs]},
     send(Reply, State),
     {next_state, established, State}.
+            
+do_handle_message_read(MsgRead, #state{user = User} = State) ->
+    Reply = MsgRead#{user => maps:get(to, MsgRead),
+                     from => User},
+    Reply2 = maps:remove(to, Reply),
+    {_, State2} = send_direct_message(Reply2, State),
+    {next_state, established, State2}.
 
 %% TODO: monitor the channel process if we store it
-send_to_channel(#{channel := ChannelId} = Message,
-                From,
-                #state{channels = Channels} = State) ->
+send_to_channel(#{channel := ChannelId} = Message, From, State) ->
+    case get_channel_pid(ChannelId, State) of
+        {ok, Pid, NewState} ->
+            Result = iris_channel:send_message(Pid, Message, From),
+            {Result, NewState};
+        {error, NewState} ->
+            %% TODO: send error
+            {error, NewState}
+    end.
+
+send_direct_message(#{channel := ChannelId} = Message, State) ->
+    case get_channel_pid(ChannelId, State) of
+        {ok, Pid, NewState} ->
+            Result = iris_channel:send_direct_message(Pid, Message),
+            {Result, NewState};
+        {error, NewState} ->
+            %% TODO: send error
+            {error, NewState}
+    end.
+
+get_channel_pid(ChannelId, #state{channels = Channels} = State) ->
     case Channels of
         #{ChannelId := Pid} ->
-            %% TODO send message to channel hook?
-            Result = iris_channel:send_message(Pid, Message, From),
-            {Result, State};
+            {ok, Pid, State};
         _ ->
             case iris_channel:ensure_channel_proc(ChannelId) of
                 {ok, Pid} ->
                     %% The channel is started already, store its pid
                     NewChannels = Channels#{ChannelId => Pid},
-                    Result = iris_channel:send_message(Pid, Message, From),
-                    {Result, State#state{channels = NewChannels}};
+                    {ok, Pid, State#state{channels = NewChannels}};
                 Other ->
                     lager:error("Send error: ~p", [Other]),
                     {error, State}
             end
     end.
 
-send_receipt(Message, #state{channels = Channels} = State) ->
-    Rcpt = read_ack(Message),
-    #{?CHANNEL := ChannelId} = Message,
-    case Channels of
-        #{ChannelId := Pid} ->
-            %% TODO send message to channel hook?
-            Result = iris_channel:send_direct_message(Pid, Rcpt),
-            {Result, State};
-        _ ->
-            case iris_channel:ensure_channel_proc(ChannelId) of
-                {ok, Pid} ->
-                    %% The channel is started already, store its pid
-                    NewChannels = Channels#{ChannelId => Pid},
-                    Result = iris_channel:send_direct_message(Pid, Rcpt),
-                    {Result, State#state{channels = NewChannels}};
-                Other ->
-                    lager:error("Send error: ~p", [Other]),
-                    {error, State}
-            end
-    end.
 
 send(Msg, #state{protocol = {json, websocket}, socket = WS} = _State) ->
     Json = jsx:encode(Msg),

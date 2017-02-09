@@ -51,9 +51,12 @@ parse(#{<<"type">> := <<"channel.history">>} = Json) ->
 parse_message(#{<<"subtype">> := <<"send">>} = Map) ->
     map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"user">>, <<"text">>,
                           <<"channel">>, <<"ts">>]);
+parse_message(#{<<"subtype">> := <<"received">>} = Map) ->
+    map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"user">>,
+                          <<"channel">>, <<"ts">>]);
 parse_message(#{<<"subtype">> := <<"read">>} = Map) ->
-    map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"user">>, <<"text">>,
-                          <<"channel">>, <<"ts">>, <<"to">>]).
+    map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"user">>, <<"to">>,
+                          <<"channel">>, <<"ts">>]).
 
 map_key_to_atom(Map, Keys) ->
     KL = maps:fold(

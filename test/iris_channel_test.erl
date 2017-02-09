@@ -14,8 +14,8 @@ create_channel_test_() ->
     {"Create channel",
      {setup, fun setup/0, fun teardown/1,
       fun(Conn) ->
-              _ = iris_tc:wait_for_json(Conn),
-              _ = send_and_wait(Conn, msg_auth("user1")),
+              hello(Conn),
+              {ok, _} = iris_tc:authenticate(Conn, "user1", "pass"),
 
               Create = msg_create_channel("user1", "friends", ["user2"]),
               Channel = send_and_wait(Conn, Create),
@@ -28,14 +28,12 @@ send_message_test_() ->
     {"Send message to a channel",
      {setup, fun setup/0, fun teardown/1,
       fun(Conn) ->
-              _ = iris_tc:wait_for_json(Conn),
-              _ = send_and_wait(Conn, msg_auth("user1")),
+              hello(Conn),
+              {ok, _} = iris_tc:authenticate(Conn, "user1", "pass"),
 
               Create = msg_create_channel("user1", "friends2", ["user2"]),
               Channel = send_and_wait(Conn, Create),
               ChannelId = maps:get(<<"id">>, Channel),
-
-              ?debugFmt("Channel created ~p", [ChannelId]),
 
               Msg = msg_message("user1", ChannelId, "Hey man"),
               iris_tc:send(Conn, Msg),
@@ -43,7 +41,6 @@ send_message_test_() ->
               HistReq = #{<<"type">> => <<"channel.history">>,
                           <<"channel">> => ChannelId},
               History = send_and_wait(Conn, HistReq),
-              ?debugVal(History),
 
               Last = lists:last(maps:get(<<"messages">>, History)),
 
@@ -57,13 +54,13 @@ send_message_other_get_test_() ->
      {setup, fun setup/0, fun teardown/1,
       fun(Conn1) ->
               %% user1 logs in
-              _ = iris_tc:wait_for_json(Conn1),
-              _ = send_and_wait(Conn1, msg_auth("user1")),
+              hello(Conn1),
+              {ok, _} = iris_tc:authenticate(Conn1, "user1", "pass"),
 
-              %% user2 logs in
+              %% user2 connects and logs in
               {ok, Conn2} = iris_tc:start_link(),
-              _ = iris_tc:wait_for_json(Conn2),
-              _ = send_and_wait(Conn2, msg_auth("user2")),
+              hello(Conn2),
+              {ok, _} = iris_tc:authenticate(Conn2, "user2", "pass"),
 
               %% user1 creates channel and invites user2
               Create = msg_create_channel("user1", "friends3", ["user2"]),
@@ -76,42 +73,50 @@ send_message_other_get_test_() ->
               Msg1 = msg_message("user1", ChannelId, "For sale"),
               iris_tc:send(Conn1, Msg1),
 
+              {ok, Stored} = iris_tc:wait_for_json(Conn1),
+              ?debugFmt("Got stored ~p", [Stored]),
+
               %% user2 gets the message
               {ok, Msg2} = iris_tc:wait_for_json(Conn2),
 
               %% user2 sends the message receipt
-              iris_tc:send(Conn2, msg_ack("user2", Msg2)),
+              iris_tc:send(Conn2, msg_read("user2", Msg2)),
 
               %% user1 gets the message ack
               {ok, Rcpt} = iris_tc:wait_for_json(Conn1),
 
-              ?debugVal(Msg2),
-              ?debugVal(Rcpt),
-
               #{<<"ts">> := Msg2Ts} = Msg2,
+              #{<<"ts">> := StoredTs} = Stored,
 
               [?_assertEqual(Channel, Channel2),
                ?_assertMatch(#{<<"channel">> := ChannelId,
                                <<"user">> := <<"user1">>,
                                <<"text">> := <<"For sale">>,
                                <<"type">> := <<"message">>}, Msg2),
+               ?_assertMatch(#{<<"type">> := <<"message">>,
+                               <<"subtype">> := <<"stored">>,
+                               <<"channel">> := ChannelId,
+                               <<"ts">> := StoredTs}, Stored),
                ?_assertMatch(#{<<"channel">> := ChannelId,
-                               <<"reader">> := <<"user2">>,
+                               <<"user">> := <<"user1">>,
+                               <<"from">> := <<"user2">>,
                                <<"type">> := <<"message">>,
                                <<"subtype">> := <<"read">>,
                                <<"ts">> := Msg2Ts}, Rcpt)]
       end
      }}.
 
+wait(Conn) ->
+    {ok, Reply} = iris_tc:wait_for_json(Conn),
+    Reply.
+
 send_and_wait(Conn, Msg) ->
     iris_tc:send(Conn, Msg),
     {ok, Reply} = iris_tc:wait_for_json(Conn),
     Reply.
 
-msg_auth(User) ->
-    #{type => <<"auth">>,
-      user => list_to_binary(User),
-      pass => <<"pass">>}.
+hello(Conn) ->
+    #{<<"type">> := <<"hello">>} = wait(Conn).
 
 msg_create_channel(User, Name, Members) ->
     #{type => <<"channel.create">>,
@@ -128,8 +133,8 @@ msg_message(User, Channel, Text) ->
 
 msg_read(User, Msg) ->
     #{user => list_to_binary(User),
-      to => maps:get(<<"user">>, Msg),
       type => <<"message">>,
       subtype => <<"read">>,
       ts => maps:get(<<"ts">>, Msg),
+      to => maps:get(<<"user">>, Msg),
       channel => maps:get(<<"channel">>, Msg)}.

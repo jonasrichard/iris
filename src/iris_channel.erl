@@ -90,6 +90,7 @@ send_direct_message(Pid, Message) ->
     gen_server:call(Pid, {send_direct, Message}).
 
 %% Send the channel data to all the members
+%% TODO should send via channel proc?
 notify_members(#channel{members = Members} = Channel) ->
     broadcast_send(Members, iris_message:channel(Channel)).
 
@@ -118,6 +119,7 @@ handle_call({send, Message, From}, _From, State) ->
              ts = TS},
     ChannelId = State#state.id,
     iris_history:append_message(ChannelId, Msg),
+    send_message_stored(From, Message),
     RoutedMessage = Message#{user => From},
     broadcast_send(From, State#state.members, RoutedMessage),
     {reply, ok, State};
@@ -196,3 +198,9 @@ send_to_user(User, Message) ->
             %% the user is offline
             ok
     end.
+
+send_message_stored(User, Message) ->
+    Stored = Message#{<<"user">> => User,
+                      <<"subtype">> => <<"stored">>},
+    Stored2 = maps:remove(<<"text">>, Stored),
+    send_to_user(User, Stored2).
