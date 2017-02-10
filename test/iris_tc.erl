@@ -77,8 +77,6 @@ wait_for_frame(Pid) ->
 
 wait_for_json(Pid) ->
     case wait_for_frame(Pid) of
-        {ok, {text, Text}} ->
-            {ok, jsx:decode(Text, [return_maps])};
         {ok, {map, Map}} ->
             {ok, Map};
         Other ->
@@ -165,7 +163,7 @@ handle_info({gun_ws_upgrade, Pid, ok, _}, connected, #state{conn = Pid} = State)
     {next_state, ready, State#state{pending = []}};
 
 handle_info({gun_ws, _Pid, {text, Text}}, ready, State) ->
-    Map = jsx:decode(Text, [return_maps]),
+    Map = jsx:decode(Text, [return_maps, {labels, attempt_atom}]),
     %?debugVal(Map),
     gen_fsm:send_event(self(), {get, Map}),
     {next_state, ready, State};

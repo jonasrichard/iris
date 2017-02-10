@@ -20,7 +20,7 @@ create_channel_test_() ->
               Create = msg_create_channel("user1", "friends", ["user2"]),
               Channel = send_and_wait(Conn, Create),
 
-              [?_assertEqual(<<"friends">>, maps:get(<<"name">>, Channel))]
+              [?_assertEqual(<<"friends">>, maps:get(name, Channel))]
       end
      }}.
 
@@ -33,19 +33,19 @@ send_message_test_() ->
 
               Create = msg_create_channel("user1", "friends2", ["user2"]),
               Channel = send_and_wait(Conn, Create),
-              ChannelId = maps:get(<<"id">>, Channel),
+              ChannelId = maps:get(id, Channel),
 
               Msg = msg_message("user1", ChannelId, "Hey man"),
               iris_tc:send(Conn, Msg),
 
-              HistReq = #{<<"type">> => <<"channel.history">>,
-                          <<"channel">> => ChannelId},
+              HistReq = #{type => <<"channel.history">>,
+                          channel => ChannelId},
               History = send_and_wait(Conn, HistReq),
 
-              Last = lists:last(maps:get(<<"messages">>, History)),
+              Last = lists:last(maps:get(messages, History)),
 
-              [?_assertMatch(#{<<"text">> := <<"Hey man">>}, Last),
-               ?_assertMatch(#{<<"user">> := <<"user1">>}, Last)]
+              [?_assertMatch(#{text := <<"Hey man">>,
+                               user := <<"user1">>}, Last)]
       end
      }}.
 
@@ -64,7 +64,7 @@ send_message_other_get_test_() ->
 
               %% user1 creates channel and invites user2
               Create = msg_create_channel("user1", "friends3", ["user2"]),
-              #{<<"id">> := ChannelId} = Channel = send_and_wait(Conn1, Create),
+              #{id := ChannelId} = Channel = send_and_wait(Conn1, Create),
 
               %% user2 needs to get the channel info
               {ok, Channel2} = iris_tc:wait_for_json(Conn2),
@@ -85,24 +85,24 @@ send_message_other_get_test_() ->
               %% user1 gets the message ack
               {ok, Rcpt} = iris_tc:wait_for_json(Conn1),
 
-              #{<<"ts">> := Msg2Ts} = Msg2,
-              #{<<"ts">> := StoredTs} = Stored,
+              #{ts := Msg2Ts} = Msg2,
+              #{ts := StoredTs} = Stored,
 
               [?_assertEqual(Channel, Channel2),
-               ?_assertMatch(#{<<"channel">> := ChannelId,
-                               <<"user">> := <<"user1">>,
-                               <<"text">> := <<"For sale">>,
-                               <<"type">> := <<"message">>}, Msg2),
-               ?_assertMatch(#{<<"type">> := <<"message">>,
-                               <<"subtype">> := <<"stored">>,
-                               <<"channel">> := ChannelId,
-                               <<"ts">> := StoredTs}, Stored),
-               ?_assertMatch(#{<<"channel">> := ChannelId,
-                               <<"user">> := <<"user1">>,
-                               <<"from">> := <<"user2">>,
-                               <<"type">> := <<"message">>,
-                               <<"subtype">> := <<"read">>,
-                               <<"ts">> := Msg2Ts}, Rcpt)]
+               ?_assertMatch(#{channel := ChannelId,
+                               user := <<"user1">>,
+                               text := <<"For sale">>,
+                               type := <<"message">>}, Msg2),
+               ?_assertMatch(#{type := <<"message">>,
+                               subtype := <<"stored">>,
+                               channel := ChannelId,
+                               ts := StoredTs}, Stored),
+               ?_assertMatch(#{channel := ChannelId,
+                               user := <<"user1">>,
+                               from := <<"user2">>,
+                               type := <<"message">>,
+                               subtype := <<"read">>,
+                               ts := Msg2Ts}, Rcpt)]
       end
      }}.
 
@@ -116,7 +116,7 @@ send_and_wait(Conn, Msg) ->
     Reply.
 
 hello(Conn) ->
-    #{<<"type">> := <<"hello">>} = wait(Conn).
+    #{type := <<"hello">>} = wait(Conn).
 
 msg_create_channel(User, Name, Members) ->
     #{type => <<"channel.create">>,
@@ -135,6 +135,6 @@ msg_read(User, Msg) ->
     #{user => list_to_binary(User),
       type => <<"message">>,
       subtype => <<"read">>,
-      ts => maps:get(<<"ts">>, Msg),
-      to => maps:get(<<"user">>, Msg),
-      channel => maps:get(<<"channel">>, Msg)}.
+      ts => maps:get(ts, Msg),
+      to => maps:get(user, Msg),
+      channel => maps:get(channel, Msg)}.
