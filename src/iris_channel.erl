@@ -200,7 +200,7 @@ send_to_user(User, Message) ->
     end.
 
 send_message_stored(User, Message) ->
-    Stored = Message#{<<"user">> => User,
-                      <<"subtype">> => <<"stored">>},
-    Stored2 = maps:remove(<<"text">>, Stored),
+    Stored = Message#{user => User,
+                      subtype => <<"stored">>},
+    Stored2 = maps:remove(text, Stored),
     send_to_user(User, Stored2).

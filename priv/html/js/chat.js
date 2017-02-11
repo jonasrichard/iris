@@ -24,19 +24,18 @@ angular.module('chat', [])
                   break;
 
               case "message":
-                  if (chat.channelId == json.channel) {
-                      chat.appendMessage(json.user, json.text, json.ts);
-                  } else {
-                      chat.update(chat.channels, json.channel, 'id', function(c) {
-                          if (c.unread) {
-                              c.unread++;
-                          } else {
-                              c.unread = 1;
-                          }
-                          return c;
-                      });
-                      console.log(chat.channels);
-                      $scope.$apply();
+                  switch (json.subtype) {
+                      case "send":
+                          // we send message
+                          chat.handleMessage(json.channel, json.user, json.text, json.ts);
+                          break;
+                      case "sent":
+                          // add some data to html element and search by channel-ts
+                          // and put an ok to the message
+                          break;
+                      case "read":
+                          // put a double ok to the message
+                          break;
                   }
                   break;
 
@@ -57,6 +56,9 @@ angular.module('chat', [])
                   }
                   break;
 
+              case "error":
+                  chat.displayError(json.error.code, json.error.msg);
+                  break;
           }
       };
 
@@ -101,6 +103,21 @@ angular.module('chat', [])
 
       // Chat message functions
 
+      chat.handleMessage = function(channel, user, text, ts) {
+          if (chat.channelId == channel) {
+              chat.appendMessage(user, text, ts);
+          } else {
+              chat.update(chat.channels, channel, 'id', function(c) {
+                  if (c.unread) {
+                      c.unread++;
+                  } else {
+                      c.unread = 1;
+                  }
+                  return c;
+              });
+          }
+      };
+
       chat.clearMessage = function() {
           $('#chat').empty();
       };
@@ -111,9 +128,18 @@ angular.module('chat', [])
           );
       };
 
+      chat.displayError = function(code, message) {
+          $('#chat').append(
+              '<p class="text-danger">' + code + ': ' + message + '</p>'
+          );
+      };
+
       chat.sendText = function() {
-          chat.send({type: "message", user: chat.user,
-                     text: chat.text, channel: chat.channelId});
+          chat.send({type: "message",
+                     subtype: "send",
+                     user: chat.user,
+                     text: chat.text,
+                     channel: chat.channelId});
           chat.appendMessage(chat.user, chat.text, undefined);
       };
 
