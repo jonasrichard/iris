@@ -10,6 +10,7 @@
 -record(channel, {
           id,
           name,
+          owner,
           members = [],
           created_ts,
           last_ts

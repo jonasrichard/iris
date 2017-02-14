@@ -40,12 +40,16 @@ angular.module('chat', [])
                   break;
 
               case "channel":
-                  chat.channels.push({id: json.id, name: json.name});
+                  chat.channels.push({id: json.id,
+                                      name: json.name,
+                                      owner: json.owner});
                   $scope.$apply();
                   break;
 
               case "channel.get":
-                  chat.channels.push({id: json.channelId, name: json.channelName});
+                  chat.channels.push({id: json.id,
+                                      name: json.name,
+                                      owner: json.owner});
                   $scope.$apply();
                   break;
 
@@ -54,6 +58,15 @@ angular.module('chat', [])
                       var msg = json.messages[i];
                       chat.appendMessage(msg.user, msg.text, msg.ts);
                   }
+                  break;
+
+              case "channel.left":
+                  var newChannels = chat.channels.filter(
+                          function(ch) {
+                              return ch.id != json.channel;
+                          });
+                  chat.channels = newChannels;
+                  $scope.$apply();
                   break;
 
               case "error":
@@ -171,6 +184,14 @@ angular.module('chat', [])
 
           chat.send(msg);
           $("#create-channel").modal('hide');
+      };
+
+      chat.leaveChannel = function(id) {
+          chat.send({type: "channel.leave", channel: id, user: chat.user});
+      };
+
+      chat.archiveChannel = function(id) {
+          chat.send({type: "channel.archive", channel: id, user: chat.user});
       };
 
       chat.update = function(coll, idx, id, fun) {

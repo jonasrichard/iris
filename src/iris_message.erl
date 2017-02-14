@@ -34,6 +34,7 @@ channel(Channel) ->
     #{<<"type">> => <<"channel">>,
       <<"id">> => Channel#channel.id,
       <<"name">> => Channel#channel.name,
+      <<"owner">> => Channel#channel.owner,
       <<"members">> => Channel#channel.members,
       <<"created_ts">> => Channel#channel.created_ts,
       <<"last_ts">> => Channel#channel.last_ts}.
@@ -46,7 +47,11 @@ parse(#{<<"type">> := <<"channel.list">>}) ->
     #{type => <<"channel.list">>};
 parse(#{<<"type">> := <<"channel.history">>} = Json) ->
     map_key_to_atom(Json, [<<"type">>, <<"channel">>,
-                           <<"start_ts">>, <<"last_ts">>]).
+                           <<"start_ts">>, <<"last_ts">>]);
+parse(#{<<"type">> := <<"channel.leave">>} = Json) ->
+    map_key_to_atom(Json, [<<"type">>, <<"channel">>, <<"user">>]);
+parse(#{<<"type">> := <<"channel.archive">>} = Json) ->
+    map_key_to_atom(Json, [<<"type">>, <<"channel">>, <<"user">>]).
 
 parse_message(#{<<"subtype">> := <<"send">>} = Map) ->
     map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"user">>, <<"text">>,

@@ -5,6 +5,8 @@
          create_channel/2,
          read_channel/1,
          read_user_channel/1,
+         leave_channel/2,
+         archive_channel/2,
          ensure_channel_proc/1,
          get_channel_proc/1,
          send_message/3,
@@ -82,6 +84,12 @@ read_user_channel(User) ->
             Ids
     end.
 
+leave_channel(Pid, User) ->
+    gen_server:call(Pid, {leave, User}).
+
+archive_channel(Pid, User) ->
+    gen_server:call(Pid, {archive, User}).
+
 %% Send a message to a channel From a user
 send_message(Pid, Message, From) ->
     gen_server:call(Pid, {send, Message, From}).
@@ -112,15 +120,16 @@ handle_cast(_Msg, State) ->
 
 handle_call({send, Message, From}, _From, State) ->
     lager:debug("Sending message (~p) ~p", [Message, From]),
+    %% Create the message
     #{text := Text, ts := TS} = Message,
-    Msg = #message{
-             user = From,
-             text = Text,
-             ts = TS},
+    Msg = #message{user = From, text = Text, ts = TS},
     ChannelId = State#state.id,
+    %% Write it in the history
     iris_history:append_message(ChannelId, Msg),
+    %% Send back the message stored message
     send_message_stored(From, Message),
     RoutedMessage = Message#{user => From},
+    %% Route the message to the receivers
     broadcast_send(From, State#state.members, RoutedMessage),
     {reply, ok, State};
 handle_call({send_direct, Message}, _From, State) ->
@@ -131,6 +140,29 @@ handle_call({send_direct, Message}, _From, State) ->
             {reply, ok, State};
         _ ->
             {reply, no_recipient, State}
+    end;
+handle_call({leave, User}, _From, #state{id = Id} = State) ->
+    %% TODO remove the cursor of the user
+    case db_leave_channel(Id, User) of
+        {ok, Channel} ->
+            LeaveMsg = #{type => <<"channel.left">>,
+                         channel => Id,
+                         user => User},
+            State2 = State#state{members = Channel#channel.members},
+            broadcast_send(User, State2#state.members, LeaveMsg),
+            {reply, ok, State};
+        {error, _} = Error ->
+            {reply, Error, State}
+    end;
+handle_call({archive, User}, _From, State) ->
+    case read_channel(State#state.id) of
+        {ok, #channel{owner = User}} ->
+            %% If the owner is the User, we can delete
+            {reply, ok, State};
+        {ok, _} ->
+            {reply, {error, only_owner_can_delete}, State};
+        _ ->
+            {reply, {error, no_such_channel}, State}
     end;
 handle_call(_Req, _From, State) ->
     {reply, ok, State}.
@@ -150,22 +182,36 @@ create_channel(Message, Id, Creator) ->
         {error, not_found} ->
             %% TODO implement a message validation layer
             #{name := Name, invitees := Invitees} = Message,
-            Channel = insert_channel(Id, Name, [Creator | Invitees]),
+            Channel = insert_channel(Id, Name, Creator, Invitees),
             {ok, Channel};
         {ok, _} ->
             {error, already_exists}
     end.
 
-insert_channel(Id, Name, Members) ->
+insert_channel(Id, Name, Owner, Members) ->
     Now = iris_utils:ts(),
+    AllMembers = [Owner | Members],
     Channel = #channel{id = Id,
                        name = Name,
-                       members = Members,
+                       owner = Owner,
+                       members = AllMembers,
                        created_ts = Now,
                        last_ts = Now},
     ok = mnesia:dirty_write(Channel),
-    [add_user_channel(User, Id) || User <- Members],
+    [add_user_channel(User, Id) || User <- AllMembers],
     Channel.
+
+db_leave_channel(Id, User) ->
+    case read_channel(Id) of
+        {ok, #channel{members = M} = Channel} ->
+            M2 = lists:delete(User, M),
+            Channel2 = Channel#channel{members = M2},
+            ok = mnesia:dirty_write(Channel2),
+            %% TODO update user_channels
+            {ok, Channel2};
+        Error ->
+            Error
+    end.
 
 add_user_channel(User, ChannelId) ->
     case mnesia:dirty_read(user_channel, User) of

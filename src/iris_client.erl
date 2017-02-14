@@ -130,7 +130,13 @@ established(Event, State) when is_map(Event) ->
             do_handle_list_channels(State);
         
         #{type := <<"channel.history">>} = History ->
-            do_handle_history(History, State)
+            do_handle_history(History, State);
+        
+        #{type := <<"channel.archive">>} = Archive ->
+            do_handle_archive_channel(Archive, State);
+        
+        #{type := <<"channel.leave">>} = Leave ->
+            do_handle_leave_channel(Leave, State)
 
     catch
         Type:Reason ->
@@ -190,23 +196,58 @@ do_handle_list_channels(#state{user = User} = State) ->
                   {error, not_found} ->
                       ok;
                   {ok, Channel} ->
-                      send(#{?TYPE => <<"channel.get">>,
-                             <<"channelId">> => ChannelId,
-                             <<"channelName">> => Channel#channel.name},
+                      send(#{type => <<"channel.get">>,
+                             id => ChannelId,
+                             name => Channel#channel.name,
+                             owner => Channel#channel.owner},
                            State)
               end
       end,
       ChannelIds),
     {next_state, established, State}.
+            
+do_handle_archive_channel(#{channel := ChannelId} = _Archive,
+                          #state{user = User} = State) ->
+    case get_channel_pid(ChannelId, State) of
+        {ok, Pid, State2} ->
+            case iris_channel:archive_channel(Pid, User) of
+                ok ->
+                    Channels2 = maps:remove(ChannelId, State#state.channels),
+                    {next_state, established, State2#state{channels = Channels2}};
+                {error, _Reason} ->
+                    reply(error, [<<"Channel cannot be left">>], State2),
+                    {next_state, established, State2}
+            end;
+        {error, State2} ->
+            reply(error, [<<"Channel cannot be found">>], State2),
+            {next_state, established, State2}
+    end.
+
+do_handle_leave_channel(#{channel := ChannelId} = _Leave,
+                        #state{user = User} = State) ->
+    case get_channel_pid(ChannelId, State) of
+        {ok, Pid, State2} ->
+            case iris_channel:leave_channel(Pid, User) of
+                ok ->
+                    Channels2 = maps:remove(ChannelId, State#state.channels),
+                    {next_state, established, State2#state{channels = Channels2}};
+                {error, _Reason} ->
+                    reply(error, [<<"Channel cannot be left">>], State2),
+                    {next_state, established, State2}
+            end;
+        {error, State2} ->
+            reply(error, [<<"Channel cannot be found">>], State2),
+            {next_state, established, State2}
+    end.
 
 do_handle_history(#{channel := ChannelId}, State) ->
     Msgs= iris_history:read_messages(ChannelId),
-    Reply = #{<<"type">> => <<"channel.history">>,
-              <<"messages">> => [
-                #{<<"type">> => <<"message">>,
-                  <<"user">> => Msg#message.user,
-                  <<"text">> => Msg#message.text,
-                  <<"ts">> => Msg#message.ts} || Msg <- Msgs]},
+    Reply = #{type => <<"channel.history">>,
+              messages => [
+                #{type => <<"message">>,
+                  user => Msg#message.user,
+                  text => Msg#message.text,
+                  ts => Msg#message.ts} || Msg <- Msgs]},
     send(Reply, State),
     {next_state, established, State}.
             
