@@ -3,14 +3,13 @@
 
 -export([start_link/1,
          create_channel/2,
-         read_channel/1,
-         read_user_channel/1,
          leave_channel/2,
          archive_channel/2,
          ensure_channel_proc/1,
          get_channel_proc/1,
          send_message/3,
          send_direct_message/2,
+         read_receipt/2,
          notify_members/1]).
 
 -export([init/1,
@@ -45,7 +44,7 @@ ensure_channel_proc(ChannelId) ->
         {ok, #channel_proc{pid = Pid}} ->
             {ok, Pid};
         {error, not_found} ->
-            case read_channel(ChannelId) of
+            case iris_db_channel:read_channel(ChannelId) of
                 {error, not_found} ->
                     {error, not_found};
                 {ok, Channel} ->
@@ -68,22 +67,6 @@ create_channel(#{channel := Id} = Message, Creator) ->
 create_channel(Message, Creator) ->
     create_channel(Message, iris_utils:id(), Creator).
 
-read_channel(Id) ->
-    case mnesia:dirty_read(channel, Id) of
-        [] ->
-            {error, not_found};
-        [Channel] ->
-            {ok, Channel}
-    end.
-
-read_user_channel(User) ->
-    case mnesia:dirty_read(user_channel, User) of
-        [] ->
-            [];
-        [#user_channel{channel_ids = Ids}] ->
-            Ids
-    end.
-
 leave_channel(Pid, User) ->
     gen_server:call(Pid, {leave, User}).
 
@@ -96,6 +79,9 @@ send_message(Pid, Message, From) ->
 
 send_direct_message(Pid, Message) ->
     gen_server:call(Pid, {send_direct, Message}).
+
+read_receipt(Pid, Message) ->
+    gen_server:call(Pid, {message_read, Message}).
 
 %% Send the channel data to all the members
 %% TODO should send via channel proc?
@@ -125,7 +111,7 @@ handle_call({send, Message, From}, _From, State) ->
     Msg = #message{user = From, text = Text, ts = TS},
     ChannelId = State#state.id,
     %% Write it in the history
-    iris_history:append_message(ChannelId, Msg),
+    iris_db_history:append_message(ChannelId, Msg),
     %% Send back the message stored message
     send_message_stored(From, Message),
     RoutedMessage = Message#{user => From},
@@ -141,9 +127,18 @@ handle_call({send_direct, Message}, _From, State) ->
         _ ->
             {reply, no_recipient, State}
     end;
+handle_call({message_read, Message}, _From, #state{id = Id} = State) ->
+    #{from := FromUser, user := ToUser, ts := TS} = Message,
+
+    iris_db_channel:move_read_cursor(Id, FromUser, TS),
+
+    %% Reply to ToUser
+    send_to_user(ToUser, Message),
+
+    {reply, ok, State};
 handle_call({leave, User}, _From, #state{id = Id} = State) ->
     %% TODO remove the cursor of the user
-    case db_leave_channel(Id, User) of
+    case iris_db_channel:db_leave_channel(Id, User) of
         {ok, Channel} ->
             LeaveMsg = #{type => <<"channel.left">>,
                          channel => Id,
@@ -155,7 +150,7 @@ handle_call({leave, User}, _From, #state{id = Id} = State) ->
             {reply, Error, State}
     end;
 handle_call({archive, User}, _From, State) ->
-    case read_channel(State#state.id) of
+    case iris_db_channel:read_channel(State#state.id) of
         {ok, #channel{owner = User}} ->
             %% If the owner is the User, we can delete
             {reply, ok, State};
@@ -178,55 +173,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%
 
 create_channel(Message, Id, Creator) ->
-    case read_channel(Id) of
+    case iris_db_channel:read_channel(Id) of
         {error, not_found} ->
             %% TODO implement a message validation layer
             #{name := Name, invitees := Invitees} = Message,
-            Channel = insert_channel(Id, Name, Creator, Invitees),
+            Channel = iris_db_channel:insert_channel(Id, Name, Creator, Invitees),
             {ok, Channel};
         {ok, _} ->
             {error, already_exists}
-    end.
-
-insert_channel(Id, Name, Owner, Members) ->
-    Now = iris_utils:ts(),
-    AllMembers = [Owner | Members],
-    Channel = #channel{id = Id,
-                       name = Name,
-                       owner = Owner,
-                       members = AllMembers,
-                       created_ts = Now,
-                       last_ts = Now},
-    ok = mnesia:dirty_write(Channel),
-    [add_user_channel(User, Id) || User <- AllMembers],
-    Channel.
-
-db_leave_channel(Id, User) ->
-    case read_channel(Id) of
-        {ok, #channel{members = M} = Channel} ->
-            M2 = lists:delete(User, M),
-            Channel2 = Channel#channel{members = M2},
-            ok = mnesia:dirty_write(Channel2),
-            %% TODO update user_channels
-            {ok, Channel2};
-        Error ->
-            Error
-    end.
-
-add_user_channel(User, ChannelId) ->
-    case mnesia:dirty_read(user_channel, User) of
-        [] ->
-            UC = #user_channel{user = User,
-                               channel_ids = [ChannelId]},
-            mnesia:dirty_write(UC);
-        [#user_channel{channel_ids = Ids} = UC] ->
-            case lists:member(ChannelId, Ids) of
-                false ->
-                    UC2 = UC#user_channel{channel_ids = [ChannelId | Ids]},
-                    mnesia:dirty_write(UC2);
-                true ->
-                    ok
-            end
     end.
 
 broadcast_send(Members, Message) ->

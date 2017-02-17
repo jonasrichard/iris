@@ -241,7 +241,7 @@ do_handle_leave_channel(#{channel := ChannelId} = _Leave,
     end.
 
 do_handle_history(#{channel := ChannelId}, State) ->
-    Msgs= iris_history:read_messages(ChannelId),
+    Msgs= iris_db_history:read_messages(ChannelId),
     Reply = #{type => <<"channel.history">>,
               messages => [
                 #{type => <<"message">>,
@@ -251,12 +251,20 @@ do_handle_history(#{channel := ChannelId}, State) ->
     send(Reply, State),
     {next_state, established, State}.
             
-do_handle_message_read(MsgRead, #state{user = User} = State) ->
+do_handle_message_read(#{channel := ChannelId} = MsgRead,
+                       #state{user = User} = State) ->
     Reply = MsgRead#{user => maps:get(to, MsgRead),
                      from => User},
     Reply2 = maps:remove(to, Reply),
-    {_, State2} = send_direct_message(Reply2, State),
-    {next_state, established, State2}.
+    %% TODO error?
+    case get_channel_pid(ChannelId, State) of
+        {ok, Pid, NewState} ->
+            _Result = iris_channel:read_receipt(Pid, Reply2),
+            {next_state, established, NewState};
+        {error, NewState} ->
+            %% TODO: send error
+            {next_state, established, NewState}
+    end.
 
 %% TODO: monitor the channel process if we store it
 send_to_channel(#{channel := ChannelId} = Message, From, State) ->

@@ -70,6 +70,7 @@ ensure_tables() ->
     ok = ensure_table_channel_proc(),
     ok = ensure_table_channel(),
     ok = ensure_table_user_channel(),
+    ok = ensure_table_cursor(),
     ok = ensure_table_history(),
     ok = ensure_table_history_index().
 
@@ -87,6 +88,9 @@ ensure_table_channel() ->
 ensure_table_user_channel() ->
     ok = ensure_table(user_channel,
                       [{disc_copies, [node()]} | ?PROPS(user_channel)]).
+
+ensure_table_cursor() ->
+    ok = ensure_table(cursor, [{disc_copies, [node()]} | ?PROPS(cursor)]).
 
 ensure_table_history() ->
     ok = ensure_table(history,

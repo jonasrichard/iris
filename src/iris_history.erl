@@ -1,4 +1,4 @@
--module(iris_history).
+-module(iris_db_history).
 
 -export([append_message/2,
          read_messages/1]).

@@ -11,7 +11,7 @@
           id,
           name,
           owner,
-          members = [],
+          members = sets:new(),
           created_ts,
           last_ts
          }).
@@ -21,9 +21,18 @@
           pid
          }).
 
+%% Cursors shows what users read from a channel
+%%   - read pointers: map of user_id -> ts
+-record(cursor, {
+          channel_id,
+          read_pointers = maps:new()
+         }).
+
+%% Channel of the user
+%% channels: map of channel_id -> {owner?} (timestamp of the last message?)
 -record(user_channel, {
           user,
-          channel_ids = []
+          channel_ids = sets:new()
          }).
 
 %% It is not a table, it is put in the channel history
