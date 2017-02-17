@@ -6,7 +6,8 @@
          leave_channel/2,
          add_user_channel/2]).
 
--export([move_read_cursor/3]).
+-export([get_read_cursor/1,
+         move_read_cursor/3]).
 
 -include("iris_db.hrl").
 
@@ -65,12 +66,20 @@ add_user_channel(User, ChannelId) ->
     ok = mnesia:dirty_write(UC2),
     {ok, UC2}.
 
+get_read_cursor(ChannelId) ->
+    case mnesia:dirty_read(cursor, ChannelId) of
+        [Cursor] ->
+            {ok, Cursor};
+        [] ->
+            {error, not_found}
+    end.
+
 move_read_cursor(ChannelId, UserId, Ts) ->
     Cursor =
-        case mnesia:dirty_read(cursor, ChannelId) of
-            [C] ->
+        case get_read_cursor(ChannelId) of
+            {ok, C} ->
                 C;
-            [] ->
+            {error, not_found} ->
                 #cursor{channel_id = ChannelId}
         end,
 

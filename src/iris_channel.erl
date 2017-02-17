@@ -9,6 +9,7 @@
          get_channel_proc/1,
          send_message/3,
          send_direct_message/2,
+         send_read_status/2,
          read_receipt/2,
          notify_members/1]).
 
@@ -80,6 +81,9 @@ send_message(Pid, Message, From) ->
 send_direct_message(Pid, Message) ->
     gen_server:call(Pid, {send_direct, Message}).
 
+send_read_status(Pid, User) ->
+    gen_server:call(Pid, {send_read_status, User}).
+
 read_receipt(Pid, Message) ->
     gen_server:call(Pid, {message_read, Message}).
 
@@ -118,6 +122,7 @@ handle_call({send, Message, From}, _From, State) ->
     %% Route the message to the receivers
     broadcast_send(From, State#state.members, RoutedMessage),
     {reply, ok, State};
+
 handle_call({send_direct, Message}, _From, State) ->
     case Message of
         #{user := To} ->
@@ -127,6 +132,7 @@ handle_call({send_direct, Message}, _From, State) ->
         _ ->
             {reply, no_recipient, State}
     end;
+
 handle_call({message_read, Message}, _From, #state{id = Id} = State) ->
     #{from := FromUser, user := ToUser, ts := TS} = Message,
 
@@ -136,9 +142,27 @@ handle_call({message_read, Message}, _From, #state{id = Id} = State) ->
     send_to_user(ToUser, Message),
 
     {reply, ok, State};
+
+handle_call({send_read_status, User}, _From, #state{id = Id} = State) ->
+    case iris_db_channel:get_read_cursor(Id) of
+        {ok, Cursor} ->
+            Ptrs = maps:fold(
+                     fun(Usr, TS, Acc) ->
+                             [#{user => Usr, ts => TS} | Acc]
+                     end, [], Cursor#cursor.read_pointers),
+
+            Reply = #{channel => Id,
+                      cursors => Ptrs},
+
+            send_to_user(User, Reply);
+        {error, not_found} ->
+            ok
+    end,
+    {reply, ok, State};
+
 handle_call({leave, User}, _From, #state{id = Id} = State) ->
     %% TODO remove the cursor of the user
-    case iris_db_channel:db_leave_channel(Id, User) of
+    case iris_db_channel:leave_channel(Id, User) of
         {ok, Channel} ->
             LeaveMsg = #{type => <<"channel.left">>,
                          channel => Id,
@@ -149,6 +173,7 @@ handle_call({leave, User}, _From, #state{id = Id} = State) ->
         {error, _} = Error ->
             {reply, Error, State}
     end;
+
 handle_call({archive, User}, _From, State) ->
     case iris_db_channel:read_channel(State#state.id) of
         {ok, #channel{owner = User}} ->
@@ -159,6 +184,7 @@ handle_call({archive, User}, _From, State) ->
         _ ->
             {reply, {error, no_such_channel}, State}
     end;
+
 handle_call(_Req, _From, State) ->
     {reply, ok, State}.
 
@@ -175,7 +201,6 @@ code_change(_OldVsn, State, _Extra) ->
 create_channel(Message, Id, Creator) ->
     case iris_db_channel:read_channel(Id) of
         {error, not_found} ->
-            %% TODO implement a message validation layer
             #{name := Name, invitees := Invitees} = Message,
             Channel = iris_db_channel:insert_channel(Id, Name, Creator, Invitees),
             {ok, Channel};
@@ -192,7 +217,6 @@ broadcast_send(From, Members, Message) ->
 send_to_user(User, Message) ->
     case iris_sm:get_session_by_user(User) of
         {ok, #session{pid = Pid} = _Session} ->
-            %% TODO: also move the user's read pointer
             gen_fsm:send_event(Pid, {route, Message});
         {error, not_found} ->
             %% the user is offline

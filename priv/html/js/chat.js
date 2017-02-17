@@ -166,6 +166,7 @@ angular.module('chat', [])
           chat.channelId = channelId.toString();
           chat.clearMessage();
           chat.send({type: "channel.history", "channel": chat.channelId});
+          chat.send({type: "channel.status", "channel": chat.channelId});
       };
 
       chat.showChannelDialog = function() {

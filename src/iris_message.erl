@@ -48,6 +48,8 @@ parse(#{<<"type">> := <<"channel.list">>}) ->
 parse(#{<<"type">> := <<"channel.history">>} = Json) ->
     map_key_to_atom(Json, [<<"type">>, <<"channel">>,
                            <<"start_ts">>, <<"last_ts">>]);
+parse(#{<<"type">> := <<"channel.status">>} = Json) ->
+    map_key_to_atom(Json, [<<"type">>, <<"channel">>]);
 parse(#{<<"type">> := <<"channel.leave">>} = Json) ->
     map_key_to_atom(Json, [<<"type">>, <<"channel">>, <<"user">>]);
 parse(#{<<"type">> := <<"channel.archive">>} = Json) ->

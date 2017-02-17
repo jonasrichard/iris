@@ -19,3 +19,6 @@ histories() ->
 user_channels() ->
     mnesia:dirty_match_object(#user_channel{_ = '_'}).
 
+cursors() ->
+    mnesia:dirty_match_object(#cursor{_ = '_'}).
+

@@ -84,7 +84,7 @@ code_change(_OldVsn, Name, State, _Extra) ->
     {ok, Name, State}.
 
 terminate(_Reason, _Name, #state{sid = SessionId} = _State) ->
-    iris_sm:delete_session(SessionId), 
+    iris_sm:delete_session(SessionId),
     ok.
 
 %%%
@@ -125,16 +125,19 @@ established(Event, State) when is_map(Event) ->
 
         #{type := <<"channel.create">>} = CrtChannel ->
             do_handle_create_channel(CrtChannel, State);
-        
+
         #{type := <<"channel.list">>} ->
             do_handle_list_channels(State);
-        
+
         #{type := <<"channel.history">>} = History ->
             do_handle_history(History, State);
-        
+
+        #{type := <<"channel.status">>} = Status ->
+            do_handle_channel_status(Status, State);
+
         #{type := <<"channel.archive">>} = Archive ->
             do_handle_archive_channel(Archive, State);
-        
+
         #{type := <<"channel.leave">>} = Leave ->
             do_handle_leave_channel(Leave, State)
 
@@ -189,10 +192,10 @@ do_handle_create_channel(CrtChannel, #state{user = User} = State) ->
     end.
 
 do_handle_list_channels(#state{user = User} = State) ->
-    ChannelIds = iris_channel:read_user_channel(User),
-    lists:foreach(
-      fun(ChannelId) ->
-              case iris_channel:read_channel(ChannelId) of
+    ChannelIds = iris_db_channel:read_user_channel(User),
+    sets:fold(
+      fun(ChannelId, _Acc) ->
+              case iris_db_channel:read_channel(ChannelId) of
                   {error, not_found} ->
                       ok;
                   {ok, Channel} ->
@@ -202,10 +205,21 @@ do_handle_list_channels(#state{user = User} = State) ->
                              owner => Channel#channel.owner},
                            State)
               end
-      end,
-      ChannelIds),
+      end, undefined, ChannelIds),
     {next_state, established, State}.
-            
+
+
+do_handle_channel_status(#{channel := ChannelId} = _Status,
+                         #state{user = User} = State) ->
+    case get_channel_pid(ChannelId, State) of
+        {ok, Pid, State2} ->
+            iris_channel:send_read_status(Pid, User),
+            {next_state, established, State2};
+        {error, State2} ->
+            reply(error, [<<"Channel cannot be found">>], State2),
+            {next_state, established, State2}
+    end.
+
 do_handle_archive_channel(#{channel := ChannelId} = _Archive,
                           #state{user = User} = State) ->
     case get_channel_pid(ChannelId, State) of
@@ -250,7 +264,7 @@ do_handle_history(#{channel := ChannelId}, State) ->
                   ts => Msg#message.ts} || Msg <- Msgs]},
     send(Reply, State),
     {next_state, established, State}.
-            
+
 do_handle_message_read(#{channel := ChannelId} = MsgRead,
                        #state{user = User} = State) ->
     Reply = MsgRead#{user => maps:get(to, MsgRead),
