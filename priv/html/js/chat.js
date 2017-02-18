@@ -54,13 +54,32 @@ angular.module('chat', [])
                   break;
 
               case "channel.history":
+                  var maxTS = "";
                   for (i in json.messages) {
                       var msg = json.messages[i];
                       chat.appendMessage(msg.user, msg.text, msg.ts);
+                      if (msg.ts > maxTS) {
+                          maxTS = msg.ts;
+                      }
                   }
+                  chat.send({
+                      type: "message",
+                      subtype: "read",
+                      user: chat.user,
+                      channel: chat.channelId,
+                      ts: maxTS});
                   break;
 
               case "channel.left":
+                  var newChannels = chat.channels.filter(
+                          function(ch) {
+                              return ch.id != json.channel;
+                          });
+                  chat.channels = newChannels;
+                  $scope.$apply();
+                  break;
+
+              case "channel.archived":
                   var newChannels = chat.channels.filter(
                           function(ch) {
                               return ch.id != json.channel;

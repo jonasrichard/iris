@@ -267,9 +267,8 @@ do_handle_history(#{channel := ChannelId}, State) ->
 
 do_handle_message_read(#{channel := ChannelId} = MsgRead,
                        #state{user = User} = State) ->
-    Reply = MsgRead#{user => maps:get(to, MsgRead),
-                     from => User},
-    Reply2 = maps:remove(to, Reply),
+    Reply = MsgRead#{from => User},
+    Reply2 = maps:remove(user, Reply),
     %% TODO error?
     case get_channel_pid(ChannelId, State) of
         {ok, Pid, NewState} ->

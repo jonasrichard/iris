@@ -62,7 +62,7 @@ parse_message(#{<<"subtype">> := <<"received">>} = Map) ->
     map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"user">>,
                           <<"channel">>, <<"ts">>]);
 parse_message(#{<<"subtype">> := <<"read">>} = Map) ->
-    map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"user">>, <<"to">>,
+    map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"user">>,
                           <<"channel">>, <<"ts">>]).
 
 map_key_to_atom(Map, Keys) ->

@@ -1,9 +1,12 @@
 -module(iris_db_channel).
 
 -export([read_channel/1,
-         read_user_channel/1,
          insert_channel/4,
          leave_channel/2,
+         delete_channel/1]).
+
+-export([read_user_channel/1,
+         remove_user_channel/2,
          add_user_channel/2]).
 
 -export([get_read_cursor/1,
@@ -11,20 +14,16 @@
 
 -include("iris_db.hrl").
 
+%%%
+%%% Channel operations
+%%%
+
 read_channel(Id) ->
     case mnesia:dirty_read(channel, Id) of
         [] ->
             {error, not_found};
         [Channel] ->
             {ok, Channel}
-    end.
-
-read_user_channel(User) ->
-    case mnesia:dirty_read(user_channel, User) of
-        [] ->
-            [];
-        [#user_channel{channel_ids = Ids}] ->
-            Ids
     end.
 
 insert_channel(Id, Name, Owner, Members) ->
@@ -40,16 +39,37 @@ insert_channel(Id, Name, Owner, Members) ->
     [add_user_channel(User, Id) || User <- AllMembers],
     Channel.
 
+%% TODO delete cursors, too!
 leave_channel(Id, User) ->
     case read_channel(Id) of
         {ok, #channel{members = M} = Channel} ->
             M2 = lists:delete(User, M),
             Channel2 = Channel#channel{members = M2},
             ok = mnesia:dirty_write(Channel2),
-            %% TODO update user_channels
+            remove_user_channel(User, Id),
             {ok, Channel2};
         Error ->
             Error
+    end.
+
+delete_channel(Id) ->
+    case read_channel(Id) of
+        {ok, #channel{members = Members}} ->
+            [remove_user_channel(Member, Id) || Member <- Members],
+            ok;
+        Error ->
+            Error
+    end.
+
+%%%
+%%% User-channel relationship handling
+
+read_user_channel(User) ->
+    case mnesia:dirty_read(user_channel, User) of
+        [] ->
+            [];
+        [#user_channel{channel_ids = Ids}] ->
+            Ids
     end.
 
 add_user_channel(User, ChannelId) ->
@@ -65,6 +85,21 @@ add_user_channel(User, ChannelId) ->
     UC2 = UC#user_channel{channel_ids = sets:add_element(ChannelId, Channels)},
     ok = mnesia:dirty_write(UC2),
     {ok, UC2}.
+
+remove_user_channel(User, ChannelId) ->
+    case mnesia:dirty_read(user_channel, User) of
+        [] ->
+            {error, not_found};
+        [#user_channel{channel_ids = Ids} = UC] ->
+            Ids2 = sets:del_element(ChannelId, Ids),
+            UC2 = UC#user_channel{channel_ids = Ids2},
+            ok = mnesia:dirty_write(UC2),
+            {ok, UC2}
+    end.
+
+%%%
+%%% Read cursor handling
+%%%
 
 get_read_cursor(ChannelId) ->
     case mnesia:dirty_read(cursor, ChannelId) of

@@ -134,12 +134,14 @@ handle_call({send_direct, Message}, _From, State) ->
     end;
 
 handle_call({message_read, Message}, _From, #state{id = Id} = State) ->
-    #{from := FromUser, user := ToUser, ts := TS} = Message,
+    #{from := FromUser, ts := TS} = Message,
 
+    %% store and broadcast only it is changed
+    %% TODO store in the state the read receipts
     iris_db_channel:move_read_cursor(Id, FromUser, TS),
 
-    %% Reply to ToUser
-    send_to_user(ToUser, Message),
+    %% broadcast to everybody
+    broadcast_send(FromUser, State#state.members, Message),
 
     {reply, ok, State};
 
@@ -174,10 +176,18 @@ handle_call({leave, User}, _From, #state{id = Id} = State) ->
             {reply, Error, State}
     end;
 
-handle_call({archive, User}, _From, State) ->
-    case iris_db_channel:read_channel(State#state.id) of
-        {ok, #channel{owner = User}} ->
+handle_call({archive, User}, _From, #state{id = Id} = State) ->
+    case iris_db_channel:read_channel(Id) of
+        {ok, #channel{owner = User, members = Members}} ->
             %% If the owner is the User, we can delete
+            %% Notify the members
+            Notify = #{type => <<"channel.archived">>,
+                       user => User,
+                       channel => Id},
+            broadcast_send(Members, Notify),
+            %% Delete the channel
+            iris_db_channel:delete_channel(Id),
+            %% TODO: normal stop?
             {reply, ok, State};
         {ok, _} ->
             {reply, {error, only_owner_can_delete}, State};
