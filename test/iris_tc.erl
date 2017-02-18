@@ -4,12 +4,17 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([start_link/0,
+         login/2,
+         hello/1,
          authenticate/3,
          send_message/5,
          send_message_read/4,
+         get_read/2,
          wait_for_frame/1,
          wait_for_json/1,
+         consume/2,
          send/2,
+         send_and_wait/2,
          close/1]).
 
 -export([init/1,
@@ -22,12 +27,13 @@
          ready/2]).
 
 -record(state, {
-          conn,             %% the gun process
-          parent,           %% the parent process
-          user,             %% name of the user
-          pending = [],     %% list of maps to send
-          recv_queue = [],  %% collect the incoming messages
-          wait_for          %% {pid, ref} to wait for
+          conn,                 %% the gun process
+          parent,               %% the parent process
+          user,                 %% name of the user
+          reads = maps:new(),   %% track the read messages (map user->ts)
+          pending = [],         %% list of maps to send
+          recv_queue = [],      %% collect the incoming messages
+          wait_for              %% {pid, ref} to wait for
          }).
 
 start_link() ->
@@ -36,6 +42,16 @@ start_link() ->
 %%%
 %%% High-level API
 %%%
+
+login(User, Pass) ->
+    {ok, Pid} = start_link(),
+    hello(Pid),
+    {ok, _} = authenticate(Pid, User, Pass),
+    Pid.
+
+hello(Pid) ->
+    {ok, Hello} = wait_for_json(Pid),
+    Hello = iris_tc_msg:hello().
 
 authenticate(Pid, User, Pass) ->
     Msg = #{type => <<"auth">>,
@@ -60,6 +76,15 @@ send_message_read(Pid, User, Channel, TS) ->
             channel => list_to_binary(Channel),
             ts => list_to_binary(TS)},
     send(Pid, Msg).
+
+get_read(Pid, User) ->
+    gen_fsm:sync_send_all_state_event(Pid, {read_cursor, list_to_binary(User)}).
+
+consume(_Pid, 0) ->
+    ok;
+consume(Pid, N) ->
+    {ok, _} = wait_for_json(Pid),
+    consume(Pid, N - 1).
 
 %%%
 %%% Low-level API
@@ -86,6 +111,11 @@ wait_for_json(Pid) ->
 send(Pid, Frame) ->
     gen_fsm:send_event(Pid, {send, Frame}).
 
+send_and_wait(Pid, Message) ->
+    send(Pid, Message),
+    {ok, Reply} = wait_for_json(Pid),
+    Reply.
+
 close(Pid) ->
     gen_fsm:send_event(Pid, close).
 
@@ -109,12 +139,12 @@ ready({get, #{<<"type">> := <<"auth">>} = Msg}, State) ->
     {next_state, ready, State#state{user = User}};
 
 ready({get, Message}, #state{conn = Pid, user = User} = State) ->
-    Reply =
+    {Reply, State2} =
         case Message of
-            #{<<"type">> := <<"message">>, <<"subtype">> := <<"incoming">>} ->
-                message_received(Message, User);
+            #{<<"type">> := <<"message">>} ->
+                on_message(Message, User);
             _ ->
-                undefined
+                {undefined, State}
         end,
 
     case Reply of
@@ -124,16 +154,16 @@ ready({get, Message}, #state{conn = Pid, user = User} = State) ->
             gun:ws_send(Pid, Reply)
     end,
 
-    ?debugFmt("Message ~p State ~p", [Message, State]),
+    %?debugFmt("Message ~p State ~p", [Message, State]),
 
-    case State of
+    case State2 of
         #state{wait_for = {FromPid, Ref}} ->
             FromPid ! {Ref, {map, Message}},
-            {next_state, ready, State#state{wait_for = undefined}};
+            {next_state, ready, State2#state{wait_for = undefined}};
         _ ->
             %% if no one is waiting for messages, let us keep the message
-            #state{recv_queue = Q} = State,
-            {next_state, ready, State#state{recv_queue = Q ++ [Message]}}
+            #state{recv_queue = Q} = State2,
+            {next_state, ready, State2#state{recv_queue = Q ++ [Message]}}
     end;
 
 ready({send, Frame}, #state{conn = Conn} = State) ->
@@ -164,7 +194,6 @@ handle_info({gun_ws_upgrade, Pid, ok, _}, connected, #state{conn = Pid} = State)
 
 handle_info({gun_ws, _Pid, {text, Text}}, ready, State) ->
     Map = jsx:decode(Text, [return_maps, {labels, attempt_atom}]),
-    %?debugVal(Map),
     gen_fsm:send_event(self(), {get, Map}),
     {next_state, ready, State};
 
@@ -175,6 +204,9 @@ handle_info(Msg, StateName, State) ->
 handle_event(_Event, Name, State) ->
     {next_state, Name, State}.
 
+handle_sync_event({read_cursor, User}, _From, Name, State) ->
+    TS = maps:get(User, State#state.reads, undefined),
+    {reply, TS, Name, State};
 handle_sync_event(_Event, _From, Name, State) ->
     {reply, ok, Name, State}.
 
@@ -188,7 +220,15 @@ terminate(_Reason, _StateName, _State) ->
 %%% Internal functions
 %%%
 
-message_received(Message, User) ->
-    Message#{<<"user">> => User,
-             <<"subtype">> => <<"received">>,
-             <<"to">> => maps:get(<<"user">>, Message)}.
+on_message(#{<<"subtype">> := <<"incoming">>} = Message,
+           #state{user = User} = State) ->
+    Reply = Message#{<<"user">> => User,
+                     <<"subtype">> => <<"received">>,
+                     <<"to">> => maps:get(<<"user">>, Message)},
+    {Reply, State};
+on_message(#{<<"subtype">> := <<"read">>, <<"from">> := From, <<"ts">> := TS},
+           #state{reads = Reads} = State) ->
+    Reads2 = maps:put(From, TS, Reads),
+    {undefined, State#state{reads = Reads2}};
+on_message(_, State) ->
+    {undefined, State}.

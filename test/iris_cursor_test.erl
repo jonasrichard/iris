@@ -23,19 +23,27 @@ offline_online_test_() ->
               Channel = iris_tc:send_and_wait(Conn1, Create),
               #{id := ChannelId} = Channel,
 
-              Conn2 = iris_tc:login("user2", "pass"),
+              _Conn2 = iris_tc:login("user2", "pass"),
               Conn3 = iris_tc:login("user3", "pass"),
 
               Msg1 = iris_tc_msg:msg_message("user1", ChannelId, "Hey all"),
               iris_tc:send(Conn1, Msg1),
 
-              {ok, _Stored1} = iris_tc:wait_for_json(Conn1),
-              {ok, _Msg12} = iris_tc:wait_for_json(Conn2),
-              {ok, _Msg13} = iris_tc:wait_for_json(Conn3),
-
               iris_tc:close(Conn3),
+              timer:sleep(100),
 
+              Msg2 = iris_tc_msg:msg_message("user1", ChannelId, "Hey all again"),
+              iris_tc:send(Conn1, Msg2),
 
+              R1 = iris_tc:get_read(Conn1, "user1"),
+              R2 = iris_tc:get_read(Conn1, "user2"),
+              R3 = iris_tc:get_read(Conn1, "user3"),
+              R4 = iris_tc:get_read(Conn1, "user4"),
+
+              ?debugVal(R1),
+              ?debugVal(R2),
+              ?debugVal(R3),
+              ?debugVal(R4),
 
               [?_assertEqual(<<"cursor">>, maps:get(name, Channel))]
       end
