@@ -1,7 +1,8 @@
 
-BIN=_build/default/rel/iris/bin/iris
-VER=0.0.2
-IMG=jonasrichard/iris:${VER}
+REL=_build/default/rel/iris
+BIN=${REL}/bin/iris
+VER=0.1
+IMG=jonasrichard/iris:0.0.2
 
 
 .PHONY: docker-build docker-console
@@ -34,6 +35,10 @@ stop:
 
 console:
 	${BIN} console
+
+test-build: release
+	rsync -rl ${REL} _build/sut1
+	rsync -rl ${REL} _build/sut2
 
 run1:
 	VMARGS_PATH=$PWD/config/vm1.args \
