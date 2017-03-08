@@ -184,12 +184,25 @@ Client needs to send that it received the messages.
 
 ```
 
+Server sends back a stored message once it stored the message persistently.
+
 ```javascript
 {
     "type": "message",
-    "subtype": "ack",
+    "subtype": "stored",
     "channel": "channel id",
-    "user": "who has read the message",
+    "ts": "timestamp of last message"
+}
+```
+
+Also other parties in the channel will get the message as incoming message.
+
+```
+{
+    "type": "message",
+    "subtype": "incoming",
+    "channel": "channel id",
+    "text": "Text of the message",
     "ts": "timestamp of last message"
 }
 ```
