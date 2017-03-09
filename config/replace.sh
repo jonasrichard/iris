@@ -2,12 +2,12 @@
 
 main(Args) ->
     io:format("~p~n", [Args]),
-    [File | Mappings] = Args,
-    {ok, Config} = file:consult(File),
+    [FileIn, FileOut | Mappings] = Args,
+    {ok, Config} = file:consult(FileIn),
     NewConfig = mapping(hd(Config), Mappings),
-    Out = io_lib:format("~p", [NewConfig]),
-    io:format("~p~n", [NewConfig]),
-    file:write(File, Out).
+    Out = io_lib:format("~p.", [NewConfig]),
+    io:format("~p.~n", [NewConfig]),
+    ok = file:write_file(FileOut, Out).
 
 mapping(Config, []) ->
     Config;

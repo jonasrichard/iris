@@ -7,8 +7,8 @@ IMG=jonasrichard/iris:0.0.2
 
 .PHONY: docker-build docker-console
 
-rebar: rebar
-	curl -O https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
+#rebar: rebar
+#	curl -O https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
 
 docker-build:
 	docker build -t ${IMG} --no-cache .
@@ -36,16 +36,21 @@ stop:
 console:
 	${BIN} console
 
-test-build: release
+test-build:
 	rsync -rl ${REL} _build/sut1
 	rsync -rl ${REL} _build/sut2
+	unlink _build/sut1/iris/releases/0.1/sys.config
+	unlink _build/sut2/iris/releases/0.1/sys.config
+	config/replace.sh config/sys.config _build/sut1/iris/releases/0.1/sys.config iris.http.port=9080
+	config/replace.sh config/sys.config _build/sut2/iris/releases/0.1/sys.config iris.http.port=9081
+	sed -i '' "s/-sname iris/-name iris1@${IP}/g" _build/sut1/iris/releases/0.1/vm.args
+	sed -i '' "s/-sname iris/-name iris2@${IP}/g" _build/sut2/iris/releases/0.1/vm.args
 
-run1:
-	VMARGS_PATH=$PWD/config/vm1.args \
-	  _build/default/rel/iris/bin/iris console
+test-start:
+	_build/sut1/iris/bin/iris start
+	_build/sut2/iris/bin/iris start
 
-run2:
-	OTHER_NODE=iris1@192.168.11.220 \
-	RELX_CONFIG_PATH=$PWD/config/sys1.config \
-	VMARGS_PATH=$PWD/config/vm2.args \
-	  _build/default/rel/iris/bin/iris console
+test-stop:
+	_build/sut1/iris/bin/iris stop
+	_build/sut2/iris/bin/iris stop
+
