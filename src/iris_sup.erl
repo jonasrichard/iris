@@ -19,8 +19,7 @@ init(_Args) ->
            child(iris_loader, []),
            child_sup(iris_channel_sup, []),
            child_sup(iris_client_sup, []),
-           child(iris_metrics, []),
-           start_cowboy()
+           child(iris_metrics, [])
           ]}
          }.
 
@@ -36,33 +35,3 @@ child_sup(Module, Args) ->
     Spec = child(Module, Args),
     Spec#{shutdown => infinity,
           type => supervisor}.
-
-start_cowboy() ->
-    Dispatch = cowboy_router:compile([
-        {'_', [
-            {"/api/[...]", iris_handler, []},
-            {"/ws", iris_ws_handler, #{}},
-            {"/[...]", cowboy_static, {priv_dir, iris, "html"}}
-        ]}
-    ]),
-    Args = [
-        iris_http_listener,
-        5,
-        [{port, get_http_port()}],
-        #{env => #{dispatch => Dispatch}}
-    ],
-    #{id => iris_cowboy,
-      start => {cowboy, start_clear, Args},
-      restart => permanent,
-      shutdown => brutal_kill,
-      type => worker,
-      modules => []}.
-
-get_http_port() ->
-    case application:get_env(iris, http) of
-        {ok, Keys} ->
-            proplists:get_value(port, Keys, 8080);
-        undefined ->
-            8080
-    end.
-
