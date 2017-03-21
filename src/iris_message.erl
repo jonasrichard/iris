@@ -56,13 +56,13 @@ parse(#{<<"type">> := <<"channel.archive">>} = Json) ->
     map_key_to_atom(Json, [<<"type">>, <<"channel">>, <<"user">>]).
 
 parse_message(#{<<"subtype">> := <<"send">>} = Map) ->
-    map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"user">>, <<"text">>,
+    map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"from">>, <<"text">>,
                           <<"channel">>, <<"ts">>]);
 parse_message(#{<<"subtype">> := <<"received">>} = Map) ->
-    map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"user">>,
+    map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"from">>,
                           <<"channel">>, <<"ts">>]);
 parse_message(#{<<"subtype">> := <<"read">>} = Map) ->
-    map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"user">>,
+    map_key_to_atom(Map, [<<"type">>, <<"subtype">>, <<"from">>,
                           <<"channel">>, <<"ts">>]).
 
 map_key_to_atom(Map, Keys) ->

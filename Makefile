@@ -22,9 +22,9 @@ compile:
 release:
 	./rebar3 release
 
-ct:
+int-test:
 	${BIN} start
-	./rebar3 ct
+	./rebar3 eunit skip_deps=true
 	@-${BIN} stop
 
 start:

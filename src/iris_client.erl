@@ -117,7 +117,7 @@ established(Event, State) when is_map(Event) ->
             %% user sent a message
             do_handle_user_sent_message(Message, State);
 
-        #{type := <<"message">>, subtype := <<"sent">>} = MsgAck ->
+        #{type := <<"message">>, subtype := <<"received">>} = MsgAck ->
             do_handle_ack_message(MsgAck, State);
 
         #{type := <<"message">>, subtype := <<"read">>} = MsgRead ->
@@ -341,9 +341,9 @@ ensure_ts(Message) ->
 
 read_ack(Message) ->
     #{type => <<"message">>,
-      subtype => <<"read">>,
-      user => maps:get(user, Message),
-      reader => maps:get(reader, Message),
+      subtype => <<"received">>,
+      from => maps:get(from, Message),
+      to => maps:get(to, Message),
       channel => maps:get(channel, Message),
       ts => maps:get(ts, Message)}.
 

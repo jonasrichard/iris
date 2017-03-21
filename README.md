@@ -70,7 +70,7 @@ And the invited parties get
 
 ```javascript
 {
-	"type": "channel.invited",
+    "type": "channel.invited",
     "name": "name",
     "channelId": "id",
     "members", ["user1", "user2"]	

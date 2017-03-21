@@ -3,7 +3,8 @@
 
 -export([start_link/0,
          create_table/3,
-         create_table/5]).
+         create_table/5,
+         insert/1]).
 
 -export([init/1,
          handle_info/2,
@@ -21,6 +22,9 @@ create_table(Name, Record, Replicated) ->
 
 create_table(Name, Record, Replicated, Key, Index) ->
     gen_server:call(?MODULE, {create_table, Name, Record, Replicated, Key, Index}).
+
+insert(_) ->
+    ok.
 
 init([#{backend := Backend} = State]) ->
     Nodes = [node() | nodes()],

@@ -29,7 +29,7 @@ angular.module('chat', [])
                           // we send message
                           chat.handleMessage(json.channel, json.user, json.text, json.ts);
                           break;
-                      case "sent":
+                      case "received":
                           // add some data to html element and search by channel-ts
                           // and put an ok to the message
                           break;
@@ -148,6 +148,12 @@ angular.module('chat', [])
                   return c;
               });
           }
+          chat.send({type: "message",
+                     subtype: "received",
+                     from: chat.user,
+                     to: user,
+                     channel: channel,
+                     ts: ts});
       };
 
       chat.clearMessage = function() {
@@ -169,7 +175,7 @@ angular.module('chat', [])
       chat.sendText = function() {
           chat.send({type: "message",
                      subtype: "send",
-                     user: chat.user,
+                     from: chat.user,
                      text: chat.text,
                      channel: chat.channelId});
           chat.appendMessage(chat.user, chat.text, undefined);

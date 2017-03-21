@@ -12,6 +12,8 @@
          get_read/2,
          wait_for_frame/1,
          wait_for_json/1,
+         wait_for_json/2,
+         wait_for_json/3,
          consume/2,
          send/2,
          send_and_wait/2,
@@ -32,8 +34,7 @@
           user,                 %% name of the user
           reads = maps:new(),   %% track the read messages (map user->ts)
           pending = [],         %% list of maps to send
-          recv_queue = [],      %% collect the incoming messages
-          wait_for              %% {pid, ref} to wait for
+          recv_queue = []       %% collect the incoming messages
          }).
 
 start_link() ->
@@ -91,13 +92,20 @@ consume(Pid, N) ->
 %%%
 
 wait_for_frame(Pid) ->
-    Ref = erlang:make_ref(),
-    gen_fsm:send_event(Pid, {wait_for, {self(), Ref}}),
-    receive
-        {Ref, Frame} ->
-            {ok, Frame}
-    after 5000 ->
-              {error, timeout}
+    wait_for_frame(Pid, os:timestamp()).
+
+wait_for_frame(Pid, TS) ->
+    case timer:now_diff(os:timestamp(), TS) div 1000 of
+        N when N > 5000 ->
+            {error, timeout};
+        _ ->
+            case gen_fsm:sync_send_all_state_event(Pid, consume) of
+                undefined ->
+                    timer:sleep(100),
+                    wait_for_frame(Pid, TS);
+                Msg ->
+                    {ok, Msg}
+            end
     end.
 
 wait_for_json(Pid) ->
@@ -106,6 +114,33 @@ wait_for_json(Pid) ->
             {ok, Map};
         Other ->
             Other
+    end.
+
+wait_for_json(Pid, Type) ->
+    wait_for_json2(Pid, atom_to_binary(Type, utf8)).
+
+%% match if there is no subtype
+wait_for_json2(Pid, Type) ->
+    M =  wait_for_json(Pid),
+    ?debugVal(M),
+    case M of
+        {ok, #{type := Type, subtype := _}} ->
+            wait_for_json2(Pid, Type);
+        {ok, #{type := Type}} = Result ->
+            Result;
+        _ ->
+            {error, no_such_message}
+    end.
+
+wait_for_json(Pid, Type, Subtype) ->
+    wait_for_json2(Pid, atom_to_binary(Type, utf8), atom_to_binary(Subtype, utf8)).
+
+wait_for_json2(Pid, Type, Subtype) ->
+    case wait_for_json(Pid) of
+        {ok, #{type := Type, subtype := Subtype}} = Result ->
+            Result;
+        _ ->
+            {error, no_such_message}
     end.
 
 send(Pid, Frame) ->
@@ -129,19 +164,16 @@ init([Parent]) ->
     {ok, connected, #state{conn = Pid, parent = Parent}}.
 
 connected({send, Frame}, State) ->
-    {next_state, connected, State#state{pending = State#state.pending ++ [Frame]}};
+    {next_state, connected, State#state{pending = State#state.pending ++ [Frame]}}.
 
-connected({wait_for, From}, State) ->
-    {next_state, connected, State#state{wait_for = From}}.
-
-ready({get, #{<<"type">> := <<"auth">>} = Msg}, State) ->
-    User = maps:get(<<"user">>, Msg),
+ready({get, #{type := <<"auth">>} = Msg}, State) ->
+    User = maps:get(user, Msg),
     {next_state, ready, State#state{user = User}};
 
 ready({get, Message}, #state{conn = Pid, user = User} = State) ->
     {Reply, State2} =
         case Message of
-            #{<<"type">> := <<"message">>} ->
+            #{type := <<"message">>} ->
                 on_message(Message, User);
             _ ->
                 {undefined, State}
@@ -154,28 +186,24 @@ ready({get, Message}, #state{conn = Pid, user = User} = State) ->
             gun:ws_send(Pid, Reply)
     end,
 
-    %?debugFmt("Message ~p State ~p", [Message, State]),
+    %?debugFmt("Message ~p State ~p", [Message, State2]),
 
-    case State2 of
-        #state{wait_for = {FromPid, Ref}} ->
-            FromPid ! {Ref, {map, Message}},
-            {next_state, ready, State2#state{wait_for = undefined}};
-        _ ->
-            %% if no one is waiting for messages, let us keep the message
-            #state{recv_queue = Q} = State2,
-            {next_state, ready, State2#state{recv_queue = Q ++ [Message]}}
-    end;
+    #state{recv_queue = Q} = State2,
+    {next_state, ready, State2#state{recv_queue = Q ++ [Message]}};
 
 ready({send, Frame}, #state{conn = Conn} = State) ->
     gun:ws_send(Conn, {text, jsx:encode(Frame)}),
     {next_state, ready, State};
 
-ready({wait_for, From}, #state{recv_queue = []} = State) ->
-    {next_state, ready, State#state{wait_for = From}};
-
-ready({wait_for, {FromPid, Ref}}, #state{recv_queue = [Msg | Rest]} = State) ->
-    FromPid ! {Ref, Msg},
-    {next_state, ready, State#state{recv_queue = Rest}};
+ready({consume, {FromPid, Ref}}, #state{recv_queue = Q} = State) ->
+    case Q of
+        [] ->
+            FromPid ! {Ref, undefined},
+            {next_state, ready, State#state{recv_queue = Q}};
+        [Msg | Rest] ->
+            FromPid ! {Ref, Msg},
+            {next_state, ready, State#state{recv_queue = Rest}}
+    end;
 
 ready(close, #state{conn = Conn} = State) ->
     gun:close(Conn),
@@ -204,6 +232,13 @@ handle_info(Msg, StateName, State) ->
 handle_event(_Event, Name, State) ->
     {next_state, Name, State}.
 
+handle_sync_event(consume, _From, Name, #state{recv_queue = Q} = State) ->
+    case Q of
+        [] ->
+            {reply, undefined, Name, State};
+        [Msg | Rest] ->
+            {reply, Msg, Name, State#state{recv_queue = Rest}}
+    end;
 handle_sync_event({read_cursor, User}, _From, Name, State) ->
     TS = maps:get(User, State#state.reads, undefined),
     {reply, TS, Name, State};
@@ -220,15 +255,21 @@ terminate(_Reason, _StateName, _State) ->
 %%% Internal functions
 %%%
 
-on_message(#{<<"subtype">> := <<"incoming">>} = Message,
+on_message(#{subtype := <<"incoming">>, user := To} = Message,
            #state{user = User} = State) ->
-    Reply = Message#{<<"user">> => User,
-                     <<"subtype">> => <<"received">>,
-                     <<"to">> => maps:get(<<"user">>, Message)},
+    Reply = Message#{user => User,
+                     subtype => <<"received">>,
+                     to => To},
+    ?debugFmt("User ~p got incoming msg ~p", [User, maps:get(text, Message)]),
     {Reply, State};
-on_message(#{<<"subtype">> := <<"read">>, <<"from">> := From, <<"ts">> := TS},
+on_message(#{subtype := <<"read">>, from := From, ts := TS},
            #state{reads = Reads} = State) ->
     Reads2 = maps:put(From, TS, Reads),
+    ?debugFmt("User ~p got read receipt from ~p", [State#state.user, From]),
     {undefined, State#state{reads = Reads2}};
+on_message(#{subtype := <<"stored">>, text := Text},
+           #state{user = User} = State) ->
+    ?debugFmt("User ~p got stored of ~p", [User, Text]),
+    {undefined, State};
 on_message(_, State) ->
     {undefined, State}.

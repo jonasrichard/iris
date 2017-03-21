@@ -118,7 +118,8 @@ handle_call({send, Message, From}, _From, State) ->
     iris_db_history:append_message(ChannelId, Msg),
     %% Send back the message stored message
     send_message_stored(From, Message),
-    RoutedMessage = Message#{user => From},
+    RoutedMessage = Message#{user => From, subtype => <<"incoming">>},
+    lager:debug("Routing ~p", [RoutedMessage]),
     %% Route the message to the receivers
     broadcast_send(From, State#state.members, RoutedMessage),
     {reply, ok, State};
@@ -227,7 +228,7 @@ broadcast_send(From, Members, Message) ->
 send_to_user(User, Message) ->
     case iris_sm:get_session_by_user(User) of
         {ok, #session{pid = Pid} = _Session} ->
-            gen_fsm:send_event(Pid, {route, Message});
+            gen_fsm:send_event(Pid, {route, Message#{<<"user">> => User}});
         {error, not_found} ->
             %% the user is offline
             ok

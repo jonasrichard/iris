@@ -74,10 +74,9 @@ send_message_other_get_test_() ->
               iris_tc:send(Conn1, Msg1),
 
               {ok, Stored} = iris_tc:wait_for_json(Conn1),
-              ?debugFmt("Got stored ~p", [Stored]),
 
               %% user2 gets the message
-              {ok, Msg2} = iris_tc:wait_for_json(Conn2),
+              {ok, Msg2} = iris_tc:wait_for_json(Conn2, message),
 
               %% user2 sends the message receipt
               iris_tc:send(Conn2, iris_tc_msg:msg_read("user2", Msg2)),
