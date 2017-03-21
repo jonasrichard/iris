@@ -92,7 +92,7 @@ The result is the list of channel data
 
 ```javascript
 {
-	"type": "channel.list",
+    "type": "channel.list",
     "channels": [
     {
     	"id": "channel id",
@@ -117,7 +117,7 @@ may be bots which can send extra messages (moderation, adivces, news, etc.).
 {
     "type": "message",
     "subtype": "send",
-    "user": "recipient id",
+    "from": "originator",
     "channel": "channel id",
     "ts": "1432132987.001278",
     "text": "This is the body of the message"
@@ -130,20 +130,10 @@ This will send the message to all resources to another user.
 {
     "type": "message",
     "subtype": "incoming",
-    "user": "recipient id",
+    "from": "originator",
     "channel": "channel id",
     "ts": "1432132987.001278",
     "text": "This is the body of the message"
-}
-```
-
-The sender get a sent message in order that it can register that the message is successfully broadcasted to the parties.
-
-```javascript
-{
-	"type": "message",
-    "subtype": "sent",
-    "ts": "timestamp"
 }
 ```
 
@@ -151,7 +141,7 @@ The sender get a sent message in order that it can register that the message is 
 
 ```javascript
 {
-	"type": "channel.read",
+    "type": "channel.read",
     "channelId": "id",
     "start_ts": "start timestamp",
     "end_ts": "option end timestamp"
@@ -184,7 +174,21 @@ Client needs to send that it received the messages.
 
 ```
 
-Server sends back a stored message once it stored the message persistently.
+The first message is sent by the sender.
+
+```javascript
+{
+    "type": "message",
+    "subtype": "send",
+    "channel": "channel id"
+    "from": "originator"
+    "ts" : "timestamp",
+    "text": "message text"
+}
+```
+
+Server sends back a stored message once it stored the message persistently. Until
+this message clients cannot be sure that the message stored successfully.
 
 ```javascript
 {
@@ -197,15 +201,33 @@ Server sends back a stored message once it stored the message persistently.
 
 Also other parties in the channel will get the message as incoming message.
 
-```
+```javascript
 {
     "type": "message",
     "subtype": "incoming",
     "channel": "channel id",
+    "from": "originator/sender",
     "text": "Text of the message",
     "ts": "timestamp of last message"
 }
 ```
+
+Client application should sign that it has received the message.
+
+```javascript
+{
+    "type": "message",
+    "subtype": "received",
+    "channel": "channel id",
+    "from": "receiver",
+    "to": "sender",
+    "ts": "timestamp of last message"
+}
+```
+
+This message will be sent only the sender of the message.
+
+The same story is played with `read` subtype message.
 
 It means that it gets all the messages by the last message.
 
