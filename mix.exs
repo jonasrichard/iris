@@ -11,10 +11,13 @@ defmodule Iris.Mixfile do
   end
 
   def application do
-    [extra_applications: [:logger]]
+    [extra_applications: [:logger, :cowboy]]
   end
 
   defp deps do
-    []
+    [{:coverex, "~> 1.4.12", only: :test},
+     {:cowboy, "~> 1.1"},
+     {:dogma, "~> 0.1.8", only: :dev},
+     {:poison, "~> 1.5.2"}]
   end
 end
