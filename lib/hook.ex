@@ -47,6 +47,9 @@ defmodule Iris.Hook do
     end
     {:reply, :ok, state}
   end
+  def handle_call(other, _from, state) do
+    {:reply, {:error, {:invalid_call, other}}, state}
+  end
 
   defp run_callbacks([], args) do
     args

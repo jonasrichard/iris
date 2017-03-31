@@ -44,3 +44,24 @@ defmodule Iris.ClientSup do
     supervise(children, strategy: :simple_one_for_one)
   end
 end
+
+defmodule Iris.ChannelSup do
+  use Supervisor
+
+  import Supervisor.Spec
+
+  def start_link do
+    Supervisor.start_link(__MODULE__, [], [name: __MODULE__])
+  end
+
+  def start_child do
+    Supervisor.start_child(__MODULE__, [])
+  end
+
+  def init(_) do
+    children = [
+      worker(Iris.Channel, [])
+    ]
+    supervise(children, strategy: :simple_one_for_one)
+  end
+end

@@ -16,8 +16,12 @@ defmodule Iris.Mixfile do
 
   defp deps do
     [{:coverex, "~> 1.4.12", only: :test},
-     {:cowboy, "~> 1.1"},
+     {:cowboy, "~> 1.1.2"},
+     {:cowlib, "~> 1.0.2", override: true},
      {:dogma, "~> 0.1.8", only: :dev},
+     {:gun, git: "git://github.com/ninenines/gun.git"},
+     {:httpoison, "~> 0.11.1", only: :test},
+     {:ranch, "~> 1.3.2", override: true},
      {:poison, "~> 1.5.2"}]
   end
 end
