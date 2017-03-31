@@ -56,7 +56,7 @@ defmodule Iris.Hook do
   end
   defp run_callbacks([{module, fun, _prio} | rest], args) do
     try do
-      :erlang.apply(module, fun, args)
+      apply(module, fun, args)
     catch
       ex, desc ->
         {:error, {ex, desc}}
