@@ -17,11 +17,11 @@ defmodule Iris.Mixfile do
 
   defp deps do
     [{:excoveralls, "~> 0.6", only: :test},
-     {:cowboy, "~> 1.1.2"},
-     {:cowlib, "~> 1.0.2", override: true},
+     {:cowboy, github: "ninenines/cowboy", tag: "2.0.0-pre.7"},
+     #{:cowlib, "~> 1.0.2", override: true},
      {:dogma, "~> 0.1.8", only: :dev},
      {:excoveralls, "~> 0.6", only: :test},
-     {:gun, git: "git://github.com/ninenines/gun.git"},
+     {:gun, github: "ninenines/gun"},
      {:httpoison, "~> 0.11.1", only: :test},
      {:poison, "~> 1.5.2"},
      {:ranch, "~> 1.3.2", override: true}
