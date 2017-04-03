@@ -5,11 +5,26 @@ defmodule Iris.Messenger do
     GenServer.start_link(__MODULE__, [self()], [])
   end
 
-  def recv(pid) do
-    GenServer.call(pid, :recv)
+  def recv_msg(pid) do
+    c = {make_ref(), self()}
+    send pid, {:recv, c}
+    receive do
+      {:msg, ^c, message} ->
+        {:ok, message}
+    after
+      4_000 ->
+        send pid, {:un_recv, c}
+        receive do
+          {:msg, ^c, message2} ->
+            {:ok, message2}
+        after
+          1_000 ->
+            {:error, :timeout}
+        end
+    end
   end
 
-  def send(pid, message) do
+  def send_msg(pid, message) do
     GenServer.call(pid, {:send, message})
   end
 
@@ -27,6 +42,20 @@ defmodule Iris.Messenger do
             not_ready: true}}
   end
 
+  def handle_info({:recv, from}, state) do
+    case state[:messages] do
+      [] ->
+        {:noreply, append(state, :pending, from)}
+      [message | rest] ->
+        {_, client} = from
+        send client, {:msg, from, message}
+        {:noreply, Map.put(state, :messages, rest)}
+    end
+  end
+  def handle_info({:un_recv, from}, state) do
+    pending2 = state[:pending] -- [from]
+    {:noreply, Map.put(state, :pending, pending2)}
+  end
   def handle_info({:gun_ws, _, {:text, text}}, state) do
     case Poison.decode(text) do
       {:ok, json} ->
@@ -39,24 +68,16 @@ defmodule Iris.Messenger do
     :gun.ws_upgrade(pid, '/ws')
     {:noreply, state}
   end
-  def handle_info({:gun_ws_upgrade, pid, :ok, _}, state) do
+  def handle_info({:gun_ws_upgrade, _pid, :ok, _}, state) do
     {:noreply, Map.delete(state, :not_ready)}
   end
-  def handle_info({:gun_down, pid, :http, _, _, _}, state) do
+  def handle_info({:gun_down, _pid, :http, _, _, _}, state) do
     {:stop, :normal, state}
   end
-  def handle_info({:'DOWN', _ref, :process, pid, _reason}, state) do
+  def handle_info({:'DOWN', _ref, :process, _pid, _reason}, state) do
     {:stop, :normal, state}
   end
 
-  def handle_call(:recv, from, state) do
-    case state[:messages] do
-      [] ->
-        {:noreply, append(state, :pending, from)}
-      [message | rest] ->
-        {:reply, message, Map.put(state, :messages, rest)}
-    end
-  end
   def handle_call({:send, message}, _from, state) do
     {:ok, json} = Poison.encode(message)
     :gun.ws_send(state[:conn], {:text, json})
@@ -67,8 +88,8 @@ defmodule Iris.Messenger do
     case state[:pending] do
       [] ->
         append(state, :messages, message)
-      [from | rest] ->
-        GenServer.reply(from, message)
+      [{_, client} = from | rest] ->
+        send client, {:msg, from, message}
         Map.put(state, :pending, rest)
     end
   end

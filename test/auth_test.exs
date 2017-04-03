@@ -5,11 +5,11 @@ defmodule Iris.AuthTest do
 
   test "successful authentication" do
     {:ok, pid} = M.start_link
-    hello = M.recv(pid)
+    {:ok, hello} = M.recv_msg(pid)
     assert hello["type"] == "hello"
-    M.send(pid, %{"type" => "auth",
-                  "user" => "user1",
-                  "pass" => "pass"})
-    IO.inspect(M.recv(pid))
+    M.send_msg(pid, %{"type" => "auth",
+                      "user" => "user1",
+                      "pass" => "pass"})
+    IO.inspect(M.recv_msg(pid))
   end
 end
