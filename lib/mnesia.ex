@@ -11,6 +11,7 @@ defmodule Iris.Mnesia do
       [] ->
         Application.stop(:mnesia)
         node = node()
+        Logger.info("Creating schema on node")
         case :mnesia.create_schema([node]) do
           :ok ->
             Application.start(:mnesia, :permanent)
