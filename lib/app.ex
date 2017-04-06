@@ -4,7 +4,12 @@ defmodule Iris.App do
 
   def start(_type, _args) do
     Logger.info("Initializing database")
+    :dbg.tracer()
+    :dbg.tpl(Amnesia.Table, [])
+    :dbg.p(:all, :c)
     Database.init()
+    Database.User.create()
+    Database.User.copying(node(), :disk)
     Iris.MainSup.start_link()
   end
 end
