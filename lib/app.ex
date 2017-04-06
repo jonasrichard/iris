@@ -1,21 +1,11 @@
 defmodule Iris.App do
   use Application
+  require Logger
 
   def start(_type, _args) do
-    start_mnesia()
+    Logger.info("Initializing database")
+    Database.init()
     Iris.MainSup.start_link()
-  end
-
-  defp start_mnesia do
-    case System.get_env("OTHER_NODE") do
-      nil ->
-        Iris.Mnesia.wait_for()
-      "NO" ->
-        :ok
-      node_name ->
-        node = String.to_atom(node_name)
-        Iris.Mnesia.join(node)
-    end
   end
 end
 

@@ -12,7 +12,8 @@ defmodule Iris.Mixfile do
   end
 
   def application do
-    [extra_applications: [:logger, :cowboy, :mnesia]]
+    [extra_applications: [:logger, :cowboy, :mnesia],
+     mod: {Iris.App, []}]
   end
 
   defp deps do
