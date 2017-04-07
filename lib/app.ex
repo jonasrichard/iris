@@ -4,18 +4,17 @@ defmodule Iris.App do
 
   def start(_type, _args) do
     Logger.info("Initializing database")
-    :dbg.tracer()
-    :dbg.tpl(Amnesia.Table, [])
-    :dbg.p(:all, :c)
+    #:dbg.tracer()
+    #:dbg.tpl(Amnesia.Table, [])
+    #:dbg.p(:all, :c)
     Database.init()
-    Database.User.create()
-    Database.User.copying(node(), :disk)
     Iris.MainSup.start_link()
   end
 end
 
 defmodule Iris.MainSup do
   use Supervisor
+  require Logger
 
   import Supervisor.Spec
 
@@ -28,7 +27,23 @@ defmodule Iris.MainSup do
       worker(Iris.Hook, []),
       worker(Iris.ClientSup, [])
     ]
-    supervise(children, strategy: :one_for_one)
+    result = supervise(children, strategy: :one_for_one)
+    start_cowboy()
+    result
+  end
+
+  defp start_cowboy do
+    dispatch = :cowboy_router.compile([
+                {:'_', [
+                    {'/api/[...]', Iris.ApiHandler, []},
+                    {'/ws', Iris.WSHandler, []},
+                    {'/[...]', :cowboy_static, {:priv_dir, :iris, 'html'}}
+                  ]}
+                ])
+    Logger.info("Starting cowboy")
+    :cowboy.start_clear(:iris_http_listener, 5,
+                        [port: 8080],
+                        %{env: %{dispatch: dispatch}})
   end
 end
 

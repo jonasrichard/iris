@@ -6,8 +6,6 @@ defmodule Iris.HookTest do
     # :dbg.tpl(Iris.Hook, [])
     # :dbg.p(:all, :c)
 
-    {:ok, _pid} = Iris.Hook.start_link
-
     :ok = Iris.Hook.add(:test_hook, __MODULE__, :first, 10)
     assert Iris.Hook.run(:test_hook, [0]) == [1]
 

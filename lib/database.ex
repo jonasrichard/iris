@@ -10,6 +10,8 @@ defdatabase Database do
       nil ->
         Logger.info("Storing schema on disk")
         Amnesia.Table.copying(:schema, node(), :disk)
+        Database.User.create()
+        Database.User.copying(node(), :disk)
       "NO" ->
         :ok
       node_name ->
