@@ -29,10 +29,9 @@ defmodule Iris.Messenger do
   end
 
   def init([parent]) do
-    #:dbg.tracer
-    #:dbg.tpl(Iris.Messenger, [])
-    #:dbg.tpl(:gun_ws, [])
-    #:dbg.p(:all, :c)
+    :dbg.tracer
+    :dbg.tpl(Iris.Messenger, [])
+    :dbg.p(:all, :c)
     {:ok, conn} = :gun.open('localhost', 8080)
     Process.monitor(conn)
     {:ok, %{parent: parent,

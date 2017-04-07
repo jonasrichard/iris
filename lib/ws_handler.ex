@@ -5,8 +5,8 @@ defmodule Iris.WSHandler do
   end
 
   def websocket_init(state) do
-    {:ok, pid} = Iris.ClientSup.start_child(self())
-    {:ok, Map.put(state, :client, pid)}
+    {:ok, client} = Iris.ClientSup.start_child(self())
+    {:ok, Map.put(state, :client, client)}
   end
 
   def websocket_handle({:text, json}, state) do
@@ -18,7 +18,7 @@ defmodule Iris.WSHandler do
         {:reply, {:text, "Invalid message"}, state}
     end
   end
-  def webosocket_handle(_, state) do
+  def websocket_handle(_, state) do
     {:ok, state}
   end
 

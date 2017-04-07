@@ -4,9 +4,6 @@ defmodule Iris.App do
 
   def start(_type, _args) do
     Logger.info("Initializing database")
-    #:dbg.tracer()
-    #:dbg.tpl(Amnesia.Table, [])
-    #:dbg.p(:all, :c)
     Database.init()
     Iris.MainSup.start_link()
   end
@@ -41,6 +38,9 @@ defmodule Iris.MainSup do
                   ]}
                 ])
     Logger.info("Starting cowboy")
+    :dbg.tracer()
+    :dbg.tpl(Iris.Client, [])
+    :dbg.p(:all, :c)
     :cowboy.start_clear(:iris_http_listener, 5,
                         [port: 8080],
                         %{env: %{dispatch: dispatch}})

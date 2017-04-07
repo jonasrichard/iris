@@ -1,5 +1,5 @@
 defmodule Iris.Client do
-  require Iris.Tracer
+  require Logger
 
   @behaviour :gen_fsm
 
