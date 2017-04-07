@@ -1,7 +1,12 @@
 defmodule Iris.Client do
+  require Iris.Tracer
+
   @behaviour :gen_fsm
 
   def start_link(ws_pid) do
+    :dbg.tracer
+    :dbg.tpl(__MODULE__, [])
+    :dbg.p(:all, :c)
     :gen_fsm.start_link(__MODULE__, [ws_pid], [])
   end
 
@@ -50,6 +55,7 @@ defmodule Iris.Client do
   end
 
   def send_message(message, %{:socket => ws}) do
-    send ws, {:text, Poison.encode(message)}
+    {:ok, text} = Poison.encode(message)
+    send ws, {:text, text}
   end
 end
