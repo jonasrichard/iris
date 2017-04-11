@@ -5,14 +5,14 @@ defmodule Iris.WSHandler do
   end
 
   def websocket_init(state) do
-    # TODO start client with client_sup
-    {:ok, state}
+    {:ok, pid} = Iris.ClientSup.start_child(self())
+    {:ok, Map.put(state, :client, pid)}
   end
 
   def websocket_handle({:text, json}, state) do
     case Poison.decode(json) do
-      {:ok, _map} ->
-        # pass it to the client
+      {:ok, map} ->
+        :gen_fsm.send_event(state[:client], map)
         {:ok, state}
       {:error, _reason} ->
         {:reply, {:text, "Invalid message"}, state}

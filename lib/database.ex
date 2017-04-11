@@ -4,6 +4,7 @@ defdatabase Database do
   require Logger
 
   deftable User, [:id, :name, :password]
+  deftable Session, [:id, :pid, :user]
 
   def init do
     case System.get_env("OTHER_NODE") do
@@ -12,6 +13,8 @@ defdatabase Database do
         Amnesia.Table.copying(:schema, node(), :disk)
         Database.User.create()
         Database.User.copying(node(), :disk)
+        Database.Session.create()
+        Database.Session.copying(node(), :memory)
       "NO" ->
         :ok
       node_name ->

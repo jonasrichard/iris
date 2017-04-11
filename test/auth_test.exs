@@ -10,6 +10,8 @@ defmodule Iris.AuthTest do
     M.send_msg(pid, %{"type" => "auth",
                       "user" => "user1",
                       "pass" => "pass"})
-    IO.inspect(M.recv_msg(pid))
+    {:ok, session} = M.recv_msg(pid)
+    assert session["type"] == "session"
+    assert is_number(session["sessionId"])
   end
 end

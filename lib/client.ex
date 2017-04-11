@@ -43,7 +43,11 @@ defmodule Iris.Client do
   end
 
   def connected(%{"type" => "auth"} = event, state) do
-    {:next_state, :established, state}
+    user = event["user"]
+    session = Iris.Session.save(self(), user)
+    state2 = Map.merge(state, %{user: user, session: session.id})
+    send_message(Iris.Message.session(session.id), state2)
+    {:next_state, :established, state2}
   end
   def connected(_event, state) do
     {:next_state, :connected, state}
