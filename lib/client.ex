@@ -46,9 +46,9 @@ defmodule Iris.Client do
     end
   end
 
-  def connected(%{"type" => "auth"} = event, state) do
-    user = event["user"]
-    case event["pass"] do
+  def connected(%{type: "auth"} = event, state) do
+    user = event[:user]
+    case event[:pass] do
       ^user ->
         session = Iris.Session.save(self(), user)
         send_message(Iris.Message.session(session.id), state)
@@ -59,12 +59,13 @@ defmodule Iris.Client do
         {:next_state, :connected, state}
     end
   end
-  def connected(_event, state) do
+  def connected(event, state) do
+    Logger.debug("Got an unknown message #{event}")
     {:next_state, :connected, state}
   end
 
   # TODO implement bye message
-  def established(%{"type" => "bye"} = _event, state) do
+  def established(%{type: :bye} = _event, state) do
     {:stop, :normal, state}
   end
 

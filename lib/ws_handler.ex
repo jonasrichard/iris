@@ -12,10 +12,16 @@ defmodule Iris.WSHandler do
   def websocket_handle({:text, json}, state) do
     case Poison.decode(json) do
       {:ok, map} ->
-        :gen_fsm.send_event(state[:client], map)
-        {:ok, state}
+        case Iris.Message.parse(map) do
+          {:ok, msg} ->
+            :gen_fsm.send_event(state[:client], msg)
+            {:ok, state}
+          {:error, "Unknown message"} ->
+            # TODO send structured error
+            {:reply, {:text, "Unknown message"}, state}
+        end
       {:error, _reason} ->
-        {:reply, {:text, "Invalid message"}, state}
+        {:reply, {:text, "Cannot parse json"}, state}
     end
   end
   def websocket_handle(_, state) do

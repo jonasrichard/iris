@@ -37,7 +37,7 @@ defmodule Iris.AuthTest do
     assert s.id == sid
 
     M.send_msg(pid, %{type: "bye"})
-    {:ok, bye} = M.recv_msg(pid)
+    {:ok, _bye} = M.recv_msg(pid)
 
     assert Iris.Session.find_by_id(sid) == :nil
   end
