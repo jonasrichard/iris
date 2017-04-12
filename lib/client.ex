@@ -17,7 +17,7 @@ defmodule Iris.Client do
     {:ok, :connected, state}
   end
 
-  def handle_info({:'DOWN', _ref, :process, pid, _reason}, state) do
+  def handle_info({:'DOWN', _ref, :process, _pid, _reason}, state) do
     {:stop, :normal, state}
   end
   # TODO: kick_out
@@ -37,32 +37,35 @@ defmodule Iris.Client do
     {:ok, name, state}
   end
 
-  def terminate(_reason, _name, state) do
-    # delete session
-    :ok
+  def terminate(reason, _name, state) do
+    case reason do
+      :normal ->
+        Iris.Session.delete(state[:session])
+      _ ->
+        :ok
+    end
   end
 
   def connected(%{"type" => "auth"} = event, state) do
     user = event["user"]
-    state2 =
-      case event["pass"] do
-        ^user ->
-          session = Iris.Session.save(self(), user)
-          send_message(Iris.Message.session(session.id), state)
-          Map.merge(state, %{user: user, session: session.id})
-        _ ->
-          send_message(Iris.Message.error("Password doesn't match"), state)
-          state
-      end
-    {:next_state, :established, state2}
+    case event["pass"] do
+      ^user ->
+        session = Iris.Session.save(self(), user)
+        send_message(Iris.Message.session(session.id), state)
+        state2 = Map.merge(state, %{user: user, session: session.id})
+        {:next_state, :established, state2}
+      _ ->
+        send_message(Iris.Message.error("Password doesn't match"), state)
+        {:next_state, :connected, state}
+    end
   end
   def connected(_event, state) do
     {:next_state, :connected, state}
   end
 
-  def established(event, state) do
-    # parse message
-    {:next_state, :established, state}
+  # TODO implement bye message
+  def established(%{"type" => "bye"} = _event, state) do
+    {:stop, :normal, state}
   end
 
   def send_message(message, %{:socket => ws}) do

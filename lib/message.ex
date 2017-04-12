@@ -1,7 +1,11 @@
 defmodule Iris.Message do
-  
+
   def hello do
     %{type: "hello"}
+  end
+
+  def bye do
+    %{type: "bye"}
   end
 
   def session(id) do

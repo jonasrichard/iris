@@ -73,6 +73,9 @@ defmodule Iris.Messenger do
   def handle_info({:gun_down, _pid, :http, _, _, _}, state) do
     {:stop, :normal, state}
   end
+  def handle_info({:gun_ws, _pid, {:close, _, _}}, state) do
+    {:stop, :normal, state}
+  end
   def handle_info({:'DOWN', _ref, :process, _pid, _reason}, state) do
     {:stop, :normal, state}
   end
