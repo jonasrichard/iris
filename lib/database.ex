@@ -5,6 +5,12 @@ defdatabase Database do
 
   deftable User, [:id, :name, :password]
   deftable Session, [:id, :pid, :user]
+  deftable Channel, [:id, :name, :owner, :members, :created_ts, :last_ts]
+  deftable ChannelProc, [:channel_id, :pid]
+  deftable Cursor, [:channel_id, :read_pointers]
+  deftable UserChannel, [:user, :channel_ids]
+  deftable History, [:channel_id, :start_ts, :last_ts, :messages, :index]
+  deftable HistoryIndex, [:id, :messages, :start_ts, :last_ts]
 
   def init do
     case System.get_env("OTHER_NODE") do
@@ -15,6 +21,18 @@ defdatabase Database do
         Database.User.copying(node(), :disk)
         Database.Session.create()
         Database.Session.copying(node(), :memory)
+        Database.Channel.create()
+        Database.Channel.copying(node(), :disk)
+        Database.ChannelProc.create()
+        Database.Channel.copying(node(), :memory)
+        Database.Cursor.create()
+        Database.Cursor.copying(node(), :disk)
+        Database.UserChannel.create()
+        Database.UserChannel.copying(node(), :disk)
+        Database.History.create()
+        Database.History.copying(node(), :disk)
+        Database.HistoryIndex.create()
+        Database.HistoryIndex.copying(node(), :disk)
       "NO" ->
         :ok
       node_name ->
