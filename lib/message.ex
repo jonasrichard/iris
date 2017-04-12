@@ -5,6 +5,10 @@ defmodule Iris.Message do
   end
 
   def session(id) do
-    %{type: "session", id: id}
+    %{type: "authenticated", sessionId: id}
+  end
+
+  def error(message) do
+    %{type: "error", message: message}
   end
 end

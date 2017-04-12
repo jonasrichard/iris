@@ -44,9 +44,16 @@ defmodule Iris.Client do
 
   def connected(%{"type" => "auth"} = event, state) do
     user = event["user"]
-    session = Iris.Session.save(self(), user)
-    state2 = Map.merge(state, %{user: user, session: session.id})
-    send_message(Iris.Message.session(session.id), state2)
+    state2 =
+      case event["pass"] do
+        ^user ->
+          session = Iris.Session.save(self(), user)
+          send_message(Iris.Message.session(session.id), state)
+          Map.merge(state, %{user: user, session: session.id})
+        _ ->
+          send_message(Iris.Message.error("Password doesn't match"), state)
+          state
+      end
     {:next_state, :established, state2}
   end
   def connected(_event, state) do
