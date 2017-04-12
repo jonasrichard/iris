@@ -19,6 +19,9 @@ docker-console:
 compile:
 	./rebar3 compile
 
+cover:
+	MIX_ENV=test mix coveralls
+
 release:
 	./rebar3 release
 

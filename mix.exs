@@ -18,9 +18,7 @@ defmodule Iris.Mixfile do
 
   defp deps do
     [{:amnesia, "~> 0.2.7"},
-     {:excoveralls, "~> 0.6", only: :test},
      {:cowboy, github: "ninenines/cowboy", tag: "2.0.0-pre.7"},
-     #{:cowlib, "~> 1.0.2", override: true},
      {:dogma, "~> 0.1.8", only: :dev},
      {:excoveralls, "~> 0.6", only: :test},
      {:gun, github: "ninenines/gun"},

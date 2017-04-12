@@ -12,6 +12,6 @@ defmodule Iris.AuthTest do
                       "pass" => "pass"})
     {:ok, session} = M.recv_msg(pid)
     assert session["type"] == "session"
-    assert is_number(session["sessionId"])
+    assert is_number(session["id"])
   end
 end
