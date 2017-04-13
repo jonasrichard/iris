@@ -16,6 +16,12 @@ defmodule Iris.Message do
     %{type: "error", message: message}
   end
 
+  def parse(%{"type" => "channel.create"} = msg) do
+    atomize(msg, [:type, :name, :channelId, :invitees])
+  end
+  def parse(%{"type" => "channel.list"}) do
+    {:ok, %{type: :'channel.list'}}
+  end
   def parse(%{"type" => "bye"}) do
     {:ok, %{type: :bye}}
   end

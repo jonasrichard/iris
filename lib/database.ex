@@ -41,6 +41,10 @@ defdatabase Database do
     end
   end
 
+  def id do
+    :erlang.phash2({node(), System.os_time()}, 0xffffffff)
+  end
+
   defp join(other_node) do
     extras = Amnesia.info(:extra_db_nodes)
     Logger.info("mnesia nodes: #{extras}")
