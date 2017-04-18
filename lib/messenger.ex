@@ -1,6 +1,19 @@
 defmodule Iris.Messenger do
   use GenServer
 
+  # High-level API
+
+  def open(name, pass) do
+    {:ok, pid} = start_link()
+    {:ok, hello} = recv_msg(pid)
+    %{"type" => "hello"} = hello
+    send_msg(pid, Iris.Message.auth(name, pass))
+    {:ok, session} = recv_msg(pid)
+    {:ok, pid, session[:id]}
+  end
+
+  # Low-level API
+
   def start_link do
     GenServer.start_link(__MODULE__, [self()], [])
   end

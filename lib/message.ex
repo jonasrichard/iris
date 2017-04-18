@@ -4,6 +4,10 @@ defmodule Iris.Message do
     %{type: "hello"}
   end
 
+  def auth(name, pass) do
+    %{type: "auth", user: name, pass: pass}
+  end
+
   def bye do
     %{type: "bye"}
   end
@@ -17,13 +21,13 @@ defmodule Iris.Message do
   end
 
   def parse(%{"type" => "channel.create"} = msg) do
-    atomize(msg, [:type, :name, :channelId, :invitees])
+    atomize(msg, [:type, :name, :invitees])
   end
   def parse(%{"type" => "channel.list"}) do
-    {:ok, %{type: :'channel.list'}}
+    {:ok, %{type: "channel.list"}}
   end
   def parse(%{"type" => "bye"}) do
-    {:ok, %{type: :bye}}
+    {:ok, %{type: "bye"}}
   end
   def parse(%{"type" => "auth"} = msg) do
     atomize(msg, [:type, :user, :pass])

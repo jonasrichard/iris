@@ -64,13 +64,21 @@ defmodule Iris.Client do
     {:next_state, :connected, state}
   end
 
-  # TODO implement bye message
-  def established(%{type: :bye} = _event, state) do
+  def established(%{type: "channel.create"} = event, state) do
+    handle_create_channel(event, state)
+    {:next_state, :established, state}
+  end
+  def established(%{type: "bye"} = _event, state) do
     {:stop, :normal, state}
   end
 
   def send_message(message, %{:socket => ws}) do
     {:ok, text} = Poison.encode(message)
     send ws, {:text, text}
+  end
+
+  defp handle_create_channel(msg, state) do
+    r = Iris.Channel.create(msg[:name], state[:user], msg[:invitees])
+    Logger.debug("Create channel #{inspect r}")
   end
 end
