@@ -22,7 +22,8 @@ defmodule Iris.MainSup do
   def init(_) do
     children = [
       worker(Iris.Hook, []),
-      worker(Iris.ClientSup, [])
+      supervisor(Iris.ChannelSup, []),
+      supervisor(Iris.ClientSup, [])
     ]
     result = supervise(children, strategy: :one_for_one)
     start_cowboy()
@@ -77,8 +78,9 @@ defmodule Iris.ChannelSup do
     Supervisor.start_link(__MODULE__, [], [name: __MODULE__])
   end
 
-  def start_child do
-    Supervisor.start_child(__MODULE__, [])
+  @doc "Start a channel process without global registration"
+  def start_child(channel) do
+    Supervisor.start_child(__MODULE__, [channel])
   end
 
   def init(_) do

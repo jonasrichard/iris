@@ -12,12 +12,16 @@ defmodule Iris.Client do
 
   def init([ws_pid]) do
     Process.monitor(ws_pid)
-    state = %{:socket => ws_pid}
+    state = %{socket: ws_pid, channels: %{}}
     send_message(Iris.Message.hello(), state)
     {:ok, :connected, state}
   end
 
-  def handle_info({:'DOWN', _ref, :process, _pid, _reason}, state) do
+  def handle_info({:route, message}, name, state) do
+    send_message(message, state)
+    {:next_state, name, state}
+  end
+  def handle_info({:'DOWN', _ref, :process, _pid, _reason}, name, state) do
     {:stop, :normal, state}
   end
   # TODO: kick_out
@@ -65,20 +69,23 @@ defmodule Iris.Client do
   end
 
   def established(%{type: "channel.create"} = event, state) do
-    handle_create_channel(event, state)
-    {:next_state, :established, state}
+    state2 = handle_create_channel(event, state)
+    {:next_state, :established, state2}
   end
   def established(%{type: "bye"} = _event, state) do
     {:stop, :normal, state}
   end
 
-  def send_message(message, %{:socket => ws}) do
+  defp send_message(message, %{:socket => ws}) do
     {:ok, text} = Poison.encode(message)
     send ws, {:text, text}
   end
 
   defp handle_create_channel(msg, state) do
-    r = Iris.Channel.create(msg[:name], state[:user], msg[:invitees])
-    Logger.debug("Create channel #{inspect r}")
+    channel = Iris.Channel.create(msg[:name], state[:user], msg[:invitees])
+    {:ok, pid} = Iris.Channel.ensure_channel(channel)
+    Iris.Channel.notify_create(pid, channel)
+    Map.update(state, :channels, %{channel.id => pid},
+               fn cs -> Map.put(cs, channel.id, pid) end)
   end
 end

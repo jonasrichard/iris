@@ -4,7 +4,7 @@ defdatabase Database do
   require Logger
 
   deftable User, [:id, :name, :password]
-  deftable Session, [:id, :pid, :user]
+  deftable Session, [:id, :pid, :user], [index: [:user]]
   deftable Channel, [:id, :name, :owner, :members, :created_ts, :last_ts]
   deftable ChannelProc, [:channel_id, :pid]
   deftable Cursor, [:channel_id, :read_pointers]

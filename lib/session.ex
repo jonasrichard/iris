@@ -17,6 +17,7 @@ defmodule Iris.Session do
     S.read!(id)
   end
 
-  def find_by_name(_user) do
+  def find_by_name(user) do
+    S.read_at!(user, :user)
   end
 end
