@@ -21,7 +21,7 @@ defmodule Iris.Client do
     send_message(message, state)
     {:next_state, name, state}
   end
-  def handle_info({:'DOWN', _ref, :process, _pid, _reason}, name, state) do
+  def handle_info({:'DOWN', _ref, :process, _pid, _reason}, _name, state) do
     {:stop, :normal, state}
   end
   # TODO: kick_out
@@ -72,6 +72,9 @@ defmodule Iris.Client do
     state2 = handle_create_channel(event, state)
     {:next_state, :established, state2}
   end
+  def established(%{type: "channel.list"}, state) do
+    {:next_state, :esbablished, state}
+  end
   def established(%{type: "bye"} = _event, state) do
     {:stop, :normal, state}
   end
@@ -85,7 +88,12 @@ defmodule Iris.Client do
     channel = Iris.Channel.create(msg[:name], state[:user], msg[:invitees])
     {:ok, pid} = Iris.Channel.ensure_channel(channel)
     Iris.Channel.notify_create(pid, channel)
-    Map.update(state, :channels, %{channel.id => pid},
-               fn cs -> Map.put(cs, channel.id, pid) end)
+    cache_channel_pid(state, channel.id, pid)
+  end
+
+  defp cache_channel_pid(state, channel_id, pid) do
+    state
+    |> Map.update(:channels, %{channel_id => pid},
+         fn(channels) -> Map.put(channels, channel_id, pid) end)
   end
 end

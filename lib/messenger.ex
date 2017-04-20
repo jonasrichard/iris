@@ -1,6 +1,8 @@
 defmodule Iris.Messenger do
   use GenServer
 
+  require Logger
+
   # High-level API
 
   def open(name, pass) do
@@ -42,9 +44,6 @@ defmodule Iris.Messenger do
   end
 
   def init([parent]) do
-    :dbg.tracer
-    :dbg.tpl(Iris.Messenger, [])
-    :dbg.p(:all, :c)
     {:ok, conn} = :gun.open('localhost', 8080)
     Process.monitor(conn)
     {:ok, %{parent: parent,
@@ -71,8 +70,10 @@ defmodule Iris.Messenger do
   def handle_info({:gun_ws, _, {:text, text}}, state) do
     case Poison.decode(text) do
       {:ok, json} ->
+        Logger.debug("Received message #{inspect json}")
         {:noreply, handle_message(json, state)}
       _ ->
+        Logger.warn("Cannot parse json #{text}")
         {:noreply, state}
     end
   end
@@ -94,6 +95,7 @@ defmodule Iris.Messenger do
   end
 
   def handle_call({:send, message}, _from, state) do
+    Logger.debug("Sending message #{inspect message}")
     {:ok, json} = Poison.encode(message)
     :gun.ws_send(state[:conn], {:text, json})
     {:reply, :ok, state}
@@ -104,8 +106,17 @@ defmodule Iris.Messenger do
       [] ->
         append(state, :messages, message)
       [{_, client} = from | rest] ->
-        send client, {:msg, from, message}
-        Map.put(state, :pending, rest)
+        # Check if there is older messages we got
+        case state[:messages] do
+          [] ->
+            send client, {:msg, from, message}
+            Map.put(state, :pending, rest)
+          [msg | rest_msgs] ->
+            send client, {:msg, from, msg}
+            state
+            |> Map.put(:messages, rest_msgs ++ msg)
+            |> Map.put(:pending, rest)
+        end
     end
   end
 

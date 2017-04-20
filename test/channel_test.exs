@@ -22,5 +22,10 @@ defmodule Iris.ChannelTest do
     assert invited["name"] == "first u1"
     assert invited["channelId"] != nil
     assert Enum.all?(~w(u1 u2), &(&1 in invited["members"]))
+
+    M.send_msg(u1, %{type: "channel.list"})
+    {:ok, u1cs} = M.recv_msg(u1)
+    assert u1cs["type"] == "channel.list"
+    assert length(u1cs["channels"]) == 1
   end
 end
