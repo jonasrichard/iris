@@ -49,7 +49,8 @@ defmodule Iris.Channel do
     send_user(channel.owner, Iris.Message.channel_created(channel))
     invite = Iris.Message.channel_invited(channel)
     channel.members
-      |> Enum.each(fn member -> send_user(member, invite) end)
+    |> List.delete(channel.owner)
+    |> Enum.each(fn member -> send_user(member, invite) end)
     {:reply, :ok, state}
   end
 
