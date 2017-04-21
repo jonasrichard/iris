@@ -35,5 +35,11 @@ defmodule Iris.ChannelTest do
     {:ok, u1cs} = M.recv_msg(u1)
     assert u1cs["type"] == "channel.list"
     assert length(u1cs["channels"]) == 1
+
+    c1 = hd(u1cs["channels"])
+    assert c1["name"] == "first u1"
+    assert "u1" in c1["members"]
+    assert "u2" in c1["members"]
+    assert "u1" == c1["owner"]
   end
 end
