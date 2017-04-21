@@ -2,8 +2,16 @@ defmodule Iris.ChannelTest do
   use ExUnit.Case
 
   alias Iris.Messenger, as: M
+  alias Iris.Tracer, as: Tracer
+
+  setup do
+    on_exit fn ->
+      Tracer.stop()
+    end
+  end
 
   test "u1 create channel, u2 should see it" do
+    Tracer.start([Iris.Client, Iris.Messenger])
     {:ok, u1, _u1s} = M.open("u1", "u1")
     {:ok, u2, _u2s} = M.open("u2", "u2")
 

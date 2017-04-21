@@ -2,10 +2,6 @@ defmodule Iris.HookTest do
   use ExUnit.Case
 
   test "add/delete hook works" do
-    # :dbg.tracer
-    # :dbg.tpl(Iris.Hook, [])
-    # :dbg.p(:all, :c)
-
     :ok = Iris.Hook.add(:test_hook, __MODULE__, :first, 10)
     assert Iris.Hook.run(:test_hook, [0]) == [1]
 
