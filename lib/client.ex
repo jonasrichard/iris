@@ -1,6 +1,9 @@
 defmodule Iris.Client do
   require Logger
 
+  alias Database.Channel, as: Channel
+  alias Database.UserChannel, as: UserChannel
+
   @behaviour :gen_fsm
 
   def start_link(ws_pid) do
@@ -70,6 +73,7 @@ defmodule Iris.Client do
     {:next_state, :established, state2}
   end
   def established(%{type: "channel.list"}, state) do
+    handle_channel_list(state)
     {:next_state, :esbablished, state}
   end
   def established(%{type: "bye"} = _event, state) do
@@ -86,6 +90,20 @@ defmodule Iris.Client do
     {:ok, pid} = Iris.Channel.ensure_channel(channel)
     Iris.Channel.notify_create(pid, channel)
     cache_channel_pid(state, channel.id, pid)
+  end
+
+  defp handle_channel_list(state) do
+    channels =
+      case UserChannel.read!(state[:user]) do
+        nil ->
+          []
+        uc ->
+          uc.channel_ids
+          |> Enum.map(&(Channel.read!(&1)))
+      end
+    message = %{type: "channel.list",
+                channels: channels}
+    send_message(message, state)
   end
 
   defp cache_channel_pid(state, channel_id, pid) do

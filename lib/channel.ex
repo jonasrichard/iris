@@ -3,6 +3,7 @@ defmodule Iris.Channel do
 
   alias Database.Channel, as: Channel
   alias Database.ChannelProc, as: ChannelProc
+  alias Database.UserChannel, as: UserChannel
 
   @doc "Create channel in the mnesia database"
   def create(name, owner, members) do
@@ -32,6 +33,19 @@ defmodule Iris.Channel do
     end
   end
 
+  @doc "Add the channel to the user channel list"
+  def add_channel_to_user(user, channel_id) do
+    case UserChannel.read!(user) do
+      nil ->
+        %UserChannel{user: user,
+                     channel_ids: MapSet.new |> MapSet.put(channel_id)}
+        |> UserChannel.write!
+      [uc] ->
+        %{uc | channel_ids: MapSet.put(uc.channel_ids, channel_id)}
+        |> UserChannel.write!
+    end
+  end
+
   def notify_create(pid, channel) do
     GenServer.call(pid, {:notify_create, channel})
   end
@@ -48,6 +62,8 @@ defmodule Iris.Channel do
   def handle_call({:notify_create, channel}, _from, state) do
     send_user(channel.owner, Iris.Message.channel_created(channel))
     invite = Iris.Message.channel_invited(channel)
+    channel.members
+    |> Enum.each(fn member -> add_channel_to_user(member, channel.id) end)
     channel.members
     |> List.delete(channel.owner)
     |> Enum.each(fn member -> send_user(member, invite) end)

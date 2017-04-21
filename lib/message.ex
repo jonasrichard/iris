@@ -34,6 +34,14 @@ defmodule Iris.Message do
       members: channel.members}
   end
 
+  def channel(channel) do
+    %{id: channel.id,
+      name: channel.name,
+      members: channel.members,
+      created_ts: channel.created_ts,
+      last_ts: channel.last_ts}
+  end
+
   def parse(%{"type" => "channel.list"}) do
     {:ok, %{type: "channel.list"}}
   end
