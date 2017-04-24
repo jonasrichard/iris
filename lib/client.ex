@@ -68,6 +68,16 @@ defmodule Iris.Client do
     {:next_state, :connected, state}
   end
 
+  def established(%{type: "message"} = event, state) do
+    case event[:subtype] do
+      "send" ->
+        handle_message_send(state, event)
+      "received" ->
+        handle_message_received(state, event)
+      "read" ->
+        handle_message_read(state, event)
+    end
+  end
   def established(%{type: "channel.create"} = event, state) do
     state2 = handle_create_channel(event, state)
     {:next_state, :established, state2}
@@ -92,6 +102,12 @@ defmodule Iris.Client do
     cache_channel_pid(state, channel.id, pid)
   end
 
+  defp handle_message_received(state, event) do
+  end
+
+  defp handle_message_read(state, event) do
+  end
+
   defp handle_channel_list(state) do
     channels =
       case UserChannel.read!(state[:user]) do
@@ -106,9 +122,38 @@ defmodule Iris.Client do
     send_message(message, state)
   end
 
+  defp handle_message_send(state, %{channel: channel_id} = event) do
+    case get_channel_pid(state, channel_id) do
+      {status, pid} ->
+        event2 = Map.put(event, :user, state[:user])
+        Iris.Channel.message_broadcast(pid, event2)
+        case status do
+          :ok ->
+            {:next_state, :established, state}
+          :new ->
+            state2 =
+              cache_channel_pid(state, channel_id, pid)
+            {:next_state, :established, state2}
+        end
+      _error ->
+        # TODO send error message
+        {:next_state, :established, state}
+    end
+  end
+
   defp cache_channel_pid(state, channel_id, pid) do
     state
     |> Map.update(:channels, %{channel_id => pid},
          fn(channels) -> Map.put(channels, channel_id, pid) end)
+  end
+
+  defp get_channel_pid(%{channels: channels} = _state, channel_id) do
+    case channels[channel_id] do
+      nil ->
+        with {:ok, pid} <- Iris.Channel.ensure_channel_by_id(channel_id),
+             do: {:new, pid}
+      pid ->
+        {:ok, pid}
+    end
   end
 end

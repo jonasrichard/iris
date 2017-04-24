@@ -50,6 +50,10 @@ defmodule Iris.Channel do
     GenServer.call(pid, {:notify_create, channel})
   end
 
+  def message_broadcast(pid, message) do
+    GenServer.call(pid, {:message_broadcast, message})
+  end
+
   def start_link(channel) do
     GenServer.start_link(__MODULE__, [channel], [])
   end
@@ -59,6 +63,12 @@ defmodule Iris.Channel do
     {:ok, %{id: channel.id, channel: channel}}
   end
 
+  def handle_call({:message_broadcast, message}, _from, state) do
+    state[:channel].members
+    |> List.delete(message[:from])
+    |> Enum.each(fn member -> send_user(member, message) end)
+    {:reply, :ok, state}
+  end
   def handle_call({:notify_create, channel}, _from, state) do
     send_user(channel.owner, Iris.Message.channel_created(channel))
     invite = Iris.Message.channel_invited(channel)

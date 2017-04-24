@@ -42,6 +42,60 @@ defmodule Iris.Message do
       last_ts: channel.last_ts}
   end
 
+  def message_send(channel_id, from, text) do
+    message_helper(channel_id, from, ts(), text)
+    |> Map.put(:subtype, "send")
+  end
+
+  def message_stored(channel_id, ts) do
+    %{type: "message",
+      subtype: "stored",
+      channel: channel_id,
+      ts: ts}
+  end
+
+  def message_incoming(channel_id, from, text) do
+    message_helper(channel_id, from, ts(), text)
+    |> Map.put(:subtype, "incoming")
+  end
+
+  def message_received(channel_id, from, to, ts) do
+    message_helper(channel_id, from, ts)
+    |> Map.put(:subtype, "received")
+    |> Map.put(:to, to)
+  end
+
+  def message_read(channel_id, from, to, ts) do
+    message_helper(channel_id, from, ts)
+    |> Map.put(:subtype, "read")
+    |> Map.put(:to, to)
+  end
+
+  defp message_helper(channel_id, from, ts) do
+    %{type: "message",
+      channel: channel_id,
+      from: from,
+      ts: ts}
+  end
+
+  defp message_helper(channel_id, from, ts, text) do
+    %{type: "message",
+      channel: channel_id,
+      from: from,
+      ts: ts,
+      text: text}
+  end
+
+  def parse(%{"type" => "message"} = msg) do
+    case msg["subtype"] do
+      "send" ->
+        atomize(msg, [:type, :subtype, :channel, :from, :ts, :text])
+      "received" ->
+        atomize(msg, [:type, :subtype, :channel, :from, :to, :ts])
+      "read" ->
+        atomize(msg, [:type, :subtype, :channel, :from, :to, :ts])
+    end
+  end
   def parse(%{"type" => "channel.list"}) do
     {:ok, %{type: "channel.list"}}
   end
@@ -53,6 +107,14 @@ defmodule Iris.Message do
   end
   def parse(%{"type" => "auth"} = msg) do
     atomize(msg, [:type, :user, :pass])
+  end
+
+  @doc "Generate an id from os timestamp"
+  def ts do
+    {mega, sec, micro} = :os.timestamp()
+    t1 = Integer.to_string(mega * 1_000_000 + sec)
+    t2 = Integer.to_string(micro)
+    t1 <> "." <> String.pad_leading(t2, 6, "0")
   end
 
   defp atomize(msg, mandatory, optional \\ []) do
