@@ -24,7 +24,10 @@ defmodule Iris.Client do
   def handle_info({:'DOWN', _ref, :process, _pid, _reason}, _name, state) do
     {:stop, :normal, state}
   end
-  # TODO: kick_out
+  def handle_info(:kick_out, name, state) do
+    Logger.info("User is kicked out")
+    {:stop, :normal, state}
+  end
   def handle_info(_info, name, state) do
     {:next_state, name, state}
   end

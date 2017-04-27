@@ -1,5 +1,6 @@
 defmodule Iris.Channel do
   use GenServer
+  require Logger
 
   alias Database.Channel, as: Channel
   alias Database.ChannelProc, as: ChannelProc
@@ -40,7 +41,7 @@ defmodule Iris.Channel do
         %UserChannel{user: user,
                      channel_ids: MapSet.new |> MapSet.put(channel_id)}
         |> UserChannel.write!
-      [uc] ->
+      uc ->
         %{uc | channel_ids: MapSet.put(uc.channel_ids, channel_id)}
         |> UserChannel.write!
     end
@@ -81,12 +82,24 @@ defmodule Iris.Channel do
   end
 
   defp send_user(user, message) do
-    case Iris.Session.find_by_name(user) do
-      nil ->
-        # TODO offline messaging
+    Iris.Session.find_by_name(user)
+    |> single(fn(session) -> send session.pid, {:route, message} end)
+  end
+
+  defp single(nil, _fun) do
+    :ok
+  end
+  defp single(list, fun) when is_list(list) do
+    case list do
+      [] ->
         :ok
-      [session] ->
-        send session.pid, {:route, message}
+      [elem] ->
+        fun.(elem)
+      _ ->
+        raise {:error, list}
     end
+  end
+  defp single(any, fun) do
+    fun.(any)
   end
 end

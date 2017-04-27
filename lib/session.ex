@@ -3,6 +3,11 @@ defmodule Iris.Session do
   alias Database.Session, as: S
 
   def save(pid, user) do
+    # Kick out previous sessions
+    with sessions when is_list(sessions) <- find_by_name(user),
+         do: sessions
+             |> Enum.each(fn(session) -> send session.pid, :kick_out end)
+    # Save new session
     id = Database.id()
     Logger.debug("Session created with #{id} for user #{user}")
     %S{id: id, pid: pid, user: user} |> S.write!

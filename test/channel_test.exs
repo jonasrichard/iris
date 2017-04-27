@@ -11,7 +11,7 @@ defmodule Iris.ChannelTest do
   end
 
   test "u1 create channel, u2 should see it" do
-    Tracer.start([Iris.Client, Iris.Messenger])
+    #Tracer.start([Iris.Client, Iris.Messenger])
     {:ok, u1, _u1s} = M.open("u1", "u1")
     {:ok, u2, _u2s} = M.open("u2", "u2")
 
