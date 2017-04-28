@@ -5,6 +5,7 @@ defmodule Iris.Channel do
   alias Database.Channel, as: Channel
   alias Database.ChannelProc, as: ChannelProc
   alias Database.UserChannel, as: UserChannel
+  alias Iris.Message, as: Message
 
   @doc "Create channel in the mnesia database"
   def create(name, owner, members) do
@@ -65,14 +66,18 @@ defmodule Iris.Channel do
   end
 
   def handle_call({:message_broadcast, message}, _from, state) do
+    %{channel: channel_id, from: from, text: text, ts: ts} = message
+    incoming = Message.message_incoming(channel_id, from, text)
     state[:channel].members
-    |> List.delete(message[:from])
-    |> Enum.each(fn member -> send_user(member, message) end)
+    |> List.delete(from)
+    |> Enum.each(fn member -> send_user(member, incoming) end)
+    # Send stored to the sender
+    send_user(from, Message.message_stored(channel_id, ts))
     {:reply, :ok, state}
   end
   def handle_call({:notify_create, channel}, _from, state) do
-    send_user(channel.owner, Iris.Message.channel_created(channel))
-    invite = Iris.Message.channel_invited(channel)
+    send_user(channel.owner, Message.channel_created(channel))
+    invite = Message.channel_invited(channel)
     channel.members
     |> Enum.each(fn member -> add_channel_to_user(member, channel.id) end)
     channel.members

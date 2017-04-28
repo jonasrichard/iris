@@ -40,11 +40,5 @@ defmodule Iris.ChannelTest do
     assert u1cs["channels"]
            |> Enum.filter(&(&1["name"] == "first u1"))
            |> Enum.all?(fn(channel) -> "u2" in channel["members"] end)
-
-    c1 = hd(u1cs["channels"])
-    assert c1["name"] == "first u1"
-    assert "u1" in c1["members"]
-    assert "u2" in c1["members"]
-    assert "u1" == c1["owner"]
   end
 end

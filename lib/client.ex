@@ -1,8 +1,13 @@
+defmodule Iris.Client.State do
+  defstruct [:socket, :session, :user, channels: %{}]
+end
+
 defmodule Iris.Client do
   require Logger
 
   alias Database.Channel, as: Channel
   alias Database.UserChannel, as: UserChannel
+  alias Iris.Client.State, as: State
 
   @behaviour :gen_fsm
 
@@ -12,19 +17,21 @@ defmodule Iris.Client do
 
   def init([ws_pid]) do
     Process.monitor(ws_pid)
-    state = %{socket: ws_pid, channels: %{}}
-    send_message(Iris.Message.hello(), state)
+    state =
+      %State{socket: ws_pid}
+      |> send_message(Iris.Message.hello())
     {:ok, :connected, state}
   end
 
   def handle_info({:route, message}, name, state) do
-    send_message(message, state)
-    {:next_state, name, state}
+    state
+    |> send_message(message)
+    |> next(name)
   end
   def handle_info({:'DOWN', _ref, :process, _pid, _reason}, _name, state) do
     {:stop, :normal, state}
   end
-  def handle_info(:kick_out, name, state) do
+  def handle_info(:kick_out, _name, state) do
     Logger.info("User is kicked out")
     {:stop, :normal, state}
   end
@@ -47,7 +54,7 @@ defmodule Iris.Client do
   def terminate(reason, _name, state) do
     case reason do
       :normal ->
-        Iris.Session.delete(state[:session])
+        Iris.Session.delete(state.session)
       _ ->
         :ok
     end
@@ -58,12 +65,14 @@ defmodule Iris.Client do
     case event[:pass] do
       ^user ->
         session = Iris.Session.save(self(), user)
-        send_message(Iris.Message.session(session.id), state)
-        state2 = Map.merge(state, %{user: user, session: session.id})
-        {:next_state, :established, state2}
+        state
+        |> send_message(Iris.Message.session(session.id))
+        |> Map.merge(%{user: user, session: session.id})
+        |> next(:established)
       _ ->
-        send_message(Iris.Message.error("Password doesn't match"), state)
-        {:next_state, :connected, state}
+        state
+        |> send_message(Iris.Message.error("Password doesn't match"))
+        |> next(:connected)
     end
   end
   def connected(event, state) do
@@ -82,28 +91,35 @@ defmodule Iris.Client do
     end
   end
   def established(%{type: "channel.create"} = event, state) do
-    state2 = handle_create_channel(event, state)
-    {:next_state, :established, state2}
+    state
+    |> handle_create_channel(event)
+    |> next(:established)
   end
   def established(%{type: "channel.list"}, state) do
-    handle_channel_list(state)
-    {:next_state, :esbablished, state}
+    state
+    |> handle_channel_list()
+    |> next(:established)
   end
   def established(%{type: "bye"} = _event, state) do
     {:stop, :normal, state}
   end
 
-  defp send_message(message, %{:socket => ws}) do
-    {:ok, text} = Poison.encode(message)
-    send ws, {:text, text}
+  defp next(state, state_name) do
+    {:next_state, state_name, state}
   end
 
-  defp handle_create_channel(msg, %{user: user} = state) do
+  defp send_message(%State{socket: ws} = state, message) do
+    {:ok, text} = Poison.encode(message)
+    send ws, {:text, text}
+    state
+  end
+
+  defp handle_create_channel(%State{user: user} = state, msg) do
     invitees = Enum.filter(msg[:invitees], &(&1 != user))
-    channel = Iris.Channel.create(msg[:name], state[:user], invitees)
-    {:ok, pid} = Iris.Channel.ensure_channel(channel)
+    channel = Iris.Channel.create(msg[:name], user, invitees)
+    {state2, pid} = get_channel_pid(state, channel.id)
     Iris.Channel.notify_create(pid, channel)
-    cache_channel_pid(state, channel.id, pid)
+    state2
   end
 
   defp handle_message_received(_state, _event) do
@@ -114,7 +130,7 @@ defmodule Iris.Client do
 
   defp handle_channel_list(state) do
     channels =
-      case UserChannel.read!(state[:user]) do
+      case UserChannel.read!(state.user) do
         nil ->
           []
         uc ->
@@ -123,41 +139,28 @@ defmodule Iris.Client do
       end
     message = %{type: "channel.list",
                 channels: channels}
-    send_message(message, state)
+    send_message(state, message)
   end
 
   defp handle_message_send(state, %{channel: channel_id} = event) do
-    case get_channel_pid(state, channel_id) do
-      {status, pid} ->
-        event2 = Map.put(event, :user, state[:user])
-        Iris.Channel.message_broadcast(pid, event2)
-        case status do
-          :ok ->
-            {:next_state, :established, state}
-          :new ->
-            state2 =
-              cache_channel_pid(state, channel_id, pid)
-            {:next_state, :established, state2}
-        end
-      _error ->
-        # TODO send error message
-        {:next_state, :established, state}
-    end
+    {state2, pid} = get_channel_pid(state, channel_id)
+    event2 = Map.put(event, :user, state2.user)
+    Iris.Channel.message_broadcast(pid, event2)
+    {:next_state, :established, state2}
   end
 
   defp cache_channel_pid(state, channel_id, pid) do
-    state
-    |> Map.update(:channels, %{channel_id => pid},
-         fn(channels) -> Map.put(channels, channel_id, pid) end)
+    %State{state | channels: Map.put(state.channels, channel_id, pid)}
   end
 
-  defp get_channel_pid(%{channels: channels} = _state, channel_id) do
+  defp get_channel_pid(%State{channels: channels} = state, channel_id) do
     case channels[channel_id] do
       nil ->
-        with {:ok, pid} <- Iris.Channel.ensure_channel_by_id(channel_id),
-             do: {:new, pid}
+        {:ok, pid} = Iris.Channel.ensure_channel_by_id(channel_id)
+        state2 = cache_channel_pid(state, channel_id, pid)
+        {state2, pid}
       pid ->
-        {:ok, pid}
+        {state, pid}
     end
   end
 end
