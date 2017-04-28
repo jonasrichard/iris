@@ -67,6 +67,7 @@ defmodule Iris.Channel do
 
   def handle_call({:message_broadcast, message}, _from, state) do
     %{channel: channel_id, from: from, text: text, ts: ts} = message
+    # Broadcast messages
     incoming = Message.message_incoming(channel_id, from, text)
     state[:channel].members
     |> List.delete(from)
@@ -76,10 +77,13 @@ defmodule Iris.Channel do
     {:reply, :ok, state}
   end
   def handle_call({:notify_create, channel}, _from, state) do
+    # Notify owner that channel is created
     send_user(channel.owner, Message.channel_created(channel))
-    invite = Message.channel_invited(channel)
+    # Add channel to everyone's channel list
     channel.members
     |> Enum.each(fn member -> add_channel_to_user(member, channel.id) end)
+    # Notify invited members
+    invite = Message.channel_invited(channel)
     channel.members
     |> List.delete(channel.owner)
     |> Enum.each(fn member -> send_user(member, invite) end)

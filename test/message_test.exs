@@ -19,6 +19,8 @@ defmodule Iris.MessageTest do
   end
 
   test "u1 send message into channel", context do
+    #Iris.Tracer.start([])
+    #:dbg.tpl(Iris.Messenger, :send_read, [])
     %{u1: u1, u2: u2, channel: channel} = context
     # TODO messenger shoud put from in the message
     M.send_msg(u1, %{type: "message",
@@ -33,8 +35,16 @@ defmodule Iris.MessageTest do
     assert stored["subtype"] == "stored"
     assert stored["channel"] == channel
 
+    {:ok, received} = M.recv_msg(u1)
+    assert received["type"] == "message"
+    assert received["subtype"] == "received"
+
     {:ok, incoming} = M.recv_msg(u2)
     assert incoming["type"] == "message"
     assert incoming["subtype"] == "incoming"
+
+    {:ok, read} = M.recv_msg(u1)
+    assert read["type"] == "message"
+    assert read["subtype"] == "read"
   end
 end

@@ -60,6 +60,7 @@ defmodule Iris.Messenger do
       [message | rest] ->
         {_, client} = from
         send client, {:msg, from, message}
+        send_read(state, message)
         {:noreply, Map.put(state, :messages, rest)}
     end
   end
@@ -102,13 +103,12 @@ defmodule Iris.Messenger do
         _ ->
           state
       end
-    Logger.debug("#{state2[:user]} sending message #{inspect message}")
-    {:ok, json} = Poison.encode(message)
-    :gun.ws_send(state2[:conn], {:text, json})
+    send_message(state2, message)
     {:reply, :ok, state2}
   end
 
   defp handle_message(message, state) do
+    send_received(state, message)
     case state[:pending] do
       [] ->
         append(state, :messages, message)
@@ -117,14 +117,52 @@ defmodule Iris.Messenger do
         case state[:messages] do
           [] ->
             send client, {:msg, from, message}
+            send_read(state, message)
             Map.put(state, :pending, rest)
           [msg | rest_msgs] ->
             send client, {:msg, from, msg}
+            send_read(state, msg)
             state
-            |> Map.put(:messages, rest_msgs ++ msg)
+            |> Map.put(:messages, rest_msgs ++ [message])
             |> Map.put(:pending, rest)
         end
     end
+  end
+
+  defp send_received(%{user: from} = state, %{"type" => "message",
+                                              "subtype" => "incoming",
+                                              "from" => to} = message) do
+    received =
+      message
+      |> Map.put("from", from)
+      |> Map.put("to", to)
+      |> Map.put("subtype", "received")
+      |> Map.delete("text")
+    send_message(state, received)
+  end
+  defp send_received(state, _) do
+    state
+  end
+
+  defp send_read(%{user: from} = state, %{"type" => "message",
+                                          "subtype" => "incoming",
+                                          "from" => to} = message) do
+    read =
+      message
+      |> Map.put("from", from)
+      |> Map.put("to", to)
+      |> Map.put("subtype", "read")
+      |> Map.delete("text")
+    send_message(state, read)
+  end
+  defp send_read(state, _) do
+    state
+  end
+
+  defp send_message(%{conn: conn} = state, message) do
+    Logger.debug("#{state[:user]} sending message #{inspect message}")
+    {:ok, json} = Poison.encode(message)
+    :gun.ws_send(conn, {:text, json})
   end
 
   defp append(map, key, value) do

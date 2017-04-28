@@ -25,4 +25,16 @@ defmodule Iris.Session do
   def find_by_name(user) do
     S.read_at!(user, :user)
   end
+
+  def send_message(user, message) do
+    case find_by_name(user) do
+      nil ->
+        :offline
+      [session] ->
+        send session.pid, {:route, message}
+      sessions ->
+        sessions
+        |> Enum.each(&(send &1.pid, {:route, message}))
+    end
+  end
 end

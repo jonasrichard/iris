@@ -8,6 +8,7 @@ defmodule Iris.Client do
   alias Database.Channel, as: Channel
   alias Database.UserChannel, as: UserChannel
   alias Iris.Client.State, as: State
+  alias Iris.Message, as: Message
 
   @behaviour :gen_fsm
 
@@ -122,12 +123,6 @@ defmodule Iris.Client do
     state2
   end
 
-  defp handle_message_received(_state, _event) do
-  end
-
-  defp handle_message_read(_state, _event) do
-  end
-
   defp handle_channel_list(state) do
     channels =
       case UserChannel.read!(state.user) do
@@ -146,7 +141,21 @@ defmodule Iris.Client do
     {state2, pid} = get_channel_pid(state, channel_id)
     event2 = Map.put(event, :user, state2.user)
     Iris.Channel.message_broadcast(pid, event2)
-    {:next_state, :established, state2}
+    next(state2, :established)
+  end
+
+  defp handle_message_received(state, msg) do
+    %{channel: ch_id, from: from, to: to, ts: ts} = msg
+    received = Message.message_received(ch_id, from, to, ts)
+    Iris.Session.send_message(to, received)
+    next(state, :established)
+  end
+
+  defp handle_message_read(state, msg) do
+    %{channel: ch_id, from: from, to: to, ts: ts} = msg
+    read = Message.message_read(ch_id, from, to, ts)
+    Iris.Session.send_message(to, read)
+    next(state, :established)
   end
 
   defp cache_channel_pid(state, channel_id, pid) do
