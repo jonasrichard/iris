@@ -1,5 +1,6 @@
 defmodule Iris.ChannelTest do
   use ExUnit.Case
+  require Logger
 
   alias Iris.Messenger, as: M
   alias Iris.Tracer, as: Tracer
@@ -34,7 +35,11 @@ defmodule Iris.ChannelTest do
     M.send_msg(u1, %{type: "channel.list"})
     {:ok, u1cs} = M.recv_msg(u1)
     assert u1cs["type"] == "channel.list"
-    assert length(u1cs["channels"]) == 1
+    assert length(u1cs["channels"]) > 0
+    Logger.info("Channel list #{inspect u1cs}")
+    assert u1cs["channels"]
+           |> Enum.filter(&(&1["name"] == "first u1"))
+           |> Enum.all?(fn(channel) -> "u2" in channel["members"] end)
 
     c1 = hd(u1cs["channels"])
     assert c1["name"] == "first u1"

@@ -70,7 +70,7 @@ defmodule Iris.Messenger do
   def handle_info({:gun_ws, _, {:text, text}}, state) do
     case Poison.decode(text) do
       {:ok, json} ->
-        Logger.debug("Received message #{inspect json}")
+        Logger.debug("#{state[:user]} received message #{inspect json}")
         {:noreply, handle_message(json, state)}
       _ ->
         Logger.warn("Cannot parse json #{text}")
@@ -95,10 +95,17 @@ defmodule Iris.Messenger do
   end
 
   def handle_call({:send, message}, _from, state) do
-    Logger.debug("Sending message #{inspect message}")
+    state2 =
+      case message do
+        %{type: "auth"} ->
+          Map.put(state, :user, message[:user])
+        _ ->
+          state
+      end
+    Logger.debug("#{state2[:user]} sending message #{inspect message}")
     {:ok, json} = Poison.encode(message)
-    :gun.ws_send(state[:conn], {:text, json})
-    {:reply, :ok, state}
+    :gun.ws_send(state2[:conn], {:text, json})
+    {:reply, :ok, state2}
   end
 
   defp handle_message(message, state) do

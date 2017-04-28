@@ -98,17 +98,18 @@ defmodule Iris.Client do
     send ws, {:text, text}
   end
 
-  defp handle_create_channel(msg, state) do
-    channel = Iris.Channel.create(msg[:name], state[:user], msg[:invitees])
+  defp handle_create_channel(msg, %{user: user} = state) do
+    invitees = Enum.filter(msg[:invitees], &(&1 != user))
+    channel = Iris.Channel.create(msg[:name], state[:user], invitees)
     {:ok, pid} = Iris.Channel.ensure_channel(channel)
     Iris.Channel.notify_create(pid, channel)
     cache_channel_pid(state, channel.id, pid)
   end
 
-  defp handle_message_received(state, event) do
+  defp handle_message_received(_state, _event) do
   end
 
-  defp handle_message_read(state, event) do
+  defp handle_message_read(_state, _event) do
   end
 
   defp handle_channel_list(state) do
