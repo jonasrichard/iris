@@ -17,9 +17,12 @@ angular.module('chat', [])
 
       chat.onmessage = function(msg) {
           var json = $.parseJSON(msg.data);
+          $('#log').append(
+              '<p class="text-success">' + msg.data + '</p>'
+          );
           console.log(json);
           switch (json.type) {
-              case "session":
+              case "authenticated":
                   chat.getChannelList();
                   break;
 
@@ -39,10 +42,13 @@ angular.module('chat', [])
                   }
                   break;
 
-              case "channel":
-                  chat.channels.push({id: json.id,
-                                      name: json.name,
-                                      owner: json.owner});
+              case "channel.list":
+                  for (i in json.channels) {
+                      var c = json.channels[i];
+                      chat.channels.push({id: c.id,
+                                          name: c.name,
+                                          owner: c.owner});
+                  }
                   $scope.$apply();
                   break;
 
@@ -130,7 +136,11 @@ angular.module('chat', [])
       };
 
       chat.send = function(obj) {
-          chat.ws.send(JSON.stringify(obj));
+          json = JSON.stringify(obj);
+          chat.ws.send(json);
+          $('#log').append(
+              '<p class="text-danger">' + json + '</p>'
+          );
       };
 
       // Chat message functions
