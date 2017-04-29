@@ -24,7 +24,7 @@ defdatabase Database do
         Database.Channel.create()
         Database.Channel.copying(node(), :disk)
         Database.ChannelProc.create()
-        Database.Channel.copying(node(), :memory)
+        Database.ChannelProc.copying(node(), :memory)
         Database.Cursor.create()
         Database.Cursor.copying(node(), :disk)
         Database.UserChannel.create()
@@ -87,4 +87,8 @@ defdatabase Database do
         storage
     end
   end
+end
+
+defmodule Database.Message do
+  defstruct [:from, :text, :ts]
 end

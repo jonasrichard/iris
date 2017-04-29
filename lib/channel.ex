@@ -11,9 +11,13 @@ defmodule Iris.Channel do
   def create(name, owner, members) do
     id = Database.id()
     now = System.system_time
-    %Channel{id: id, name: name, owner: owner,
-             members: [owner | members], created_ts: now, last_ts: now}
-      |> Channel.write!
+    %Channel{id: id,
+             name: name,
+             owner: owner,
+             members: [owner | members],
+             created_ts: now,
+             last_ts: now}
+    |> Channel.write!
   end
 
   @doc "Ensure the channel pid is started"
@@ -29,7 +33,7 @@ defmodule Iris.Channel do
   def ensure_channel_by_id(id) do
     case Channel.read!(id) do
       nil ->
-        {:error, :not_such_channel}
+        {:error, :no_such_channel}
       channel ->
         ensure_channel(channel)
     end

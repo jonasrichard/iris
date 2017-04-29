@@ -84,12 +84,23 @@ defmodule Iris.Client do
   def established(%{type: "message"} = event, state) do
     case event[:subtype] do
       "send" ->
-        handle_message_send(state, event)
+        event2 = Map.put(event, :ts, Message.ts())
+        handle_message_send(state, event2)
       "received" ->
         handle_message_received(state, event)
       "read" ->
         handle_message_read(state, event)
     end
+  end
+  def established(%{type: "channel.history"} = event, state) do
+    state
+    |> handle_channel_history(event)
+    |> next(:established)
+  end
+  def established(%{type: "channel.status"} = event, state) do
+    state
+    |> handle_channel_status(event)
+    |> next(:established)
   end
   def established(%{type: "channel.create"} = event, state) do
     state
@@ -115,6 +126,14 @@ defmodule Iris.Client do
     state
   end
 
+  defp handle_channel_history(state, %{channel: channel_id}) do
+    messages =
+      Iris.History.read_history(channel_id)
+      |> Enum.map(&(Message.message_archive(&1)))
+    state
+    |> send_message(Message.channel_history(channel_id, messages))
+  end
+
   defp handle_create_channel(%State{user: user} = state, msg) do
     invitees = Enum.filter(msg[:invitees], &(&1 != user))
     channel = Iris.Channel.create(msg[:name], user, invitees)
@@ -132,9 +151,12 @@ defmodule Iris.Client do
           uc.channel_ids
           |> Enum.map(&(Channel.read!(&1)))
       end
-    message = %{type: "channel.list",
-                channels: channels}
+    message = Message.channel_list(channels)
     send_message(state, message)
+  end
+
+  defp handle_channel_status(state, msg) do
+    state
   end
 
   defp handle_message_send(state, %{channel: channel_id} = event) do

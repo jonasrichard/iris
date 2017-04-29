@@ -42,6 +42,17 @@ defmodule Iris.Message do
       last_ts: channel.last_ts}
   end
 
+  def channel_history(channel_id, messages) do
+    %{type: "channel.history",
+      channel: channel_id,
+      messages: messages}
+  end
+
+  def channel_list(channels) do
+    %{type: "channel.list",
+      channels: channels}
+  end
+
   def message_send(channel_id, from, text) do
     message_helper(channel_id, from, ts(), text)
     |> Map.put(:subtype, "send")
@@ -86,15 +97,34 @@ defmodule Iris.Message do
       text: text}
   end
 
+  def message_archive(db_message) do
+    %{type: "message",
+      subtype: "archive",
+      from: db_message.from,
+      ts: db_message.ts,
+      text: db_message.text}
+  end
+
   def parse(%{"type" => "message"} = msg) do
     case msg["subtype"] do
       "send" ->
-        atomize(msg, [:type, :subtype, :channel, :from, :ts, :text])
+        atomize(msg, [:type, :subtype, :channel, :from, :text])
+        |> to_number([:channel])
       "received" ->
         atomize(msg, [:type, :subtype, :channel, :from, :to, :ts])
+        |> to_number([:channel, :ts])
       "read" ->
         atomize(msg, [:type, :subtype, :channel, :from, :to, :ts])
+        |> to_number([:channel, :ts])
     end
+  end
+  def parse(%{"type" => "channel.history"} = msg) do
+    atomize(msg, [:type, :channel])
+    |> to_number([:channel])
+  end
+  def parse(%{"type" => "channel.status"} = msg) do
+    atomize(msg, [:type, :channel])
+    |> to_number([:channel])
   end
   def parse(%{"type" => "channel.list"}) do
     {:ok, %{type: "channel.list"}}
@@ -153,5 +183,15 @@ defmodule Iris.Message do
               {:cont, Map.put(map, field, value)}
           end
         end)
+  end
+
+  defp to_number({:ok, map}, keys) do
+    result =
+      keys
+      |> Enum.reduce(map,
+                     fn(key, acc) ->
+                       Map.put(acc, key, String.to_integer(acc[key]))
+                     end)
+    {:ok, result}
   end
 end

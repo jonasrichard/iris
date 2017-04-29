@@ -52,8 +52,8 @@ angular.module('chat', [])
                   $scope.$apply();
                   break;
 
-              case "channel.get":
-                  chat.channels.push({id: json.id,
+              case "channel.created":
+                  chat.channels.push({id: json.channelId,
                                       name: json.name,
                                       owner: json.owner});
                   $scope.$apply();
@@ -68,12 +68,14 @@ angular.module('chat', [])
                           maxTS = msg.ts;
                       }
                   }
-                  chat.send({
-                      type: "message",
-                      subtype: "read",
-                      user: chat.user,
-                      channel: chat.channelId,
-                      ts: maxTS});
+                  if (maxTS != "") {
+                      chat.send({
+                          type: "message",
+                          subtype: "read",
+                          from: chat.user,
+                          channel: chat.channelId,
+                          ts: maxTS});
+                  }
                   break;
 
               case "channel.left":
@@ -228,6 +230,12 @@ angular.module('chat', [])
 
       chat.archiveChannel = function(id) {
           chat.send({type: "channel.archive", channel: id, user: chat.user});
+      };
+
+      chat.reload = function() {
+          chat.clearMessage();
+          chat.channels = [];
+          chat.send({type: "channel.list"});
       };
 
       chat.update = function(coll, idx, id, fun) {
