@@ -32,6 +32,10 @@ angular.module('chat', [])
                           // we send message
                           chat.handleMessage(json.channel, json.user, json.text, json.ts);
                           break;
+                      case "incoming":
+                          // we send message
+                          chat.handleMessage(json.channel, json.from, json.text, json.ts);
+                          break;
                       case "received":
                           // add some data to html element and search by channel-ts
                           // and put an ok to the message
@@ -61,11 +65,13 @@ angular.module('chat', [])
 
               case "channel.history":
                   var maxTS = "";
+                  var lastMsg;
                   for (i in json.messages) {
                       var msg = json.messages[i];
-                      chat.appendMessage(msg.user, msg.text, msg.ts);
+                      chat.appendMessage(msg.from, msg.text, msg.ts);
                       if (msg.ts > maxTS) {
                           maxTS = msg.ts;
+                          lastMsg = msg;
                       }
                   }
                   if (maxTS != "") {
@@ -73,6 +79,7 @@ angular.module('chat', [])
                           type: "message",
                           subtype: "read",
                           from: chat.user,
+                          to: lastMsg.from,
                           channel: chat.channelId,
                           ts: maxTS});
                   }

@@ -112,10 +112,10 @@ defmodule Iris.Message do
         |> to_number([:channel])
       "received" ->
         atomize(msg, [:type, :subtype, :channel, :from, :to, :ts])
-        |> to_number([:channel, :ts])
+        |> to_number([:channel])
       "read" ->
         atomize(msg, [:type, :subtype, :channel, :from, :to, :ts])
-        |> to_number([:channel, :ts])
+        |> to_number([:channel])
     end
   end
   def parse(%{"type" => "channel.history"} = msg) do
@@ -162,7 +162,7 @@ defmodule Iris.Message do
         error
       map ->
         Enum.reduce(optional, map,
-            fn field, acc ->
+            fn(field, acc) ->
               case msg[Atom.to_string(field)] do
                 nil ->
                   acc
@@ -175,7 +175,7 @@ defmodule Iris.Message do
 
   defp mandatories(msg, mandatory) do
     Enum.reduce_while(mandatory, %{},
-        fn field, map ->
+        fn(field, map) ->
           case msg[Atom.to_string(field)] do
             nil ->
               {:halt, {:error, {"Missing mandatory field #{field}"}}}
@@ -190,7 +190,12 @@ defmodule Iris.Message do
       keys
       |> Enum.reduce(map,
                      fn(key, acc) ->
-                       Map.put(acc, key, String.to_integer(acc[key]))
+                       case acc[key] do
+                         n when is_integer(n) ->
+                           acc
+                         b ->
+                           Map.put(acc, key, String.to_integer(b))
+                       end
                      end)
     {:ok, result}
   end

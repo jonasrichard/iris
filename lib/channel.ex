@@ -4,6 +4,7 @@ defmodule Iris.Channel do
 
   alias Database.Channel, as: Channel
   alias Database.ChannelProc, as: ChannelProc
+  alias Database.Cursor, as: Cursor
   alias Database.UserChannel, as: UserChannel
   alias Iris.Message, as: Message
 
@@ -25,8 +26,8 @@ defmodule Iris.Channel do
     case ChannelProc.read!(channel.id) do
       nil ->
         Iris.ChannelSup.start_child(channel)
-      pid ->
-        {:ok, pid}
+      proc ->
+        {:ok, proc.pid}
     end
   end
 
@@ -60,6 +61,10 @@ defmodule Iris.Channel do
     GenServer.call(pid, {:message_broadcast, message})
   end
 
+  def message_read(pid, user, ts, to) do
+    GenServer.call(pid, {:message_read, user, ts, to})
+  end
+
   def start_link(channel) do
     GenServer.start_link(__MODULE__, [channel], [])
   end
@@ -71,6 +76,7 @@ defmodule Iris.Channel do
 
   def handle_call({:message_broadcast, message}, _from, state) do
     %{channel: channel_id, from: from, text: text, ts: ts} = message
+    Iris.History.append_to_history(channel_id, message)
     # Broadcast messages
     incoming = Message.message_incoming(channel_id, from, text)
     state[:channel].members
@@ -78,6 +84,24 @@ defmodule Iris.Channel do
     |> Enum.each(fn member -> send_user(member, incoming) end)
     # Send stored to the sender
     send_user(from, Message.message_stored(channel_id, ts))
+    {:reply, :ok, state}
+  end
+  def handle_call({:message_read, user, ts, to}, _from, state) do
+    channel_id = state[:id]
+    # Move cursor
+    case Cursor.read!(channel_id) do
+      nil ->
+        %Cursor{channel_id: channel_id, read_pointers: %{user => ts}}
+        |> Cursor.write!
+      cursor ->
+        cursor
+        |> Map.update(:read_pointers, %{user => ts},
+                      fn(pointers) -> Map.put(pointers, user, ts) end)
+        |> Cursor.write!
+    end
+    # Send read receipt
+    receipt = Message.message_read(channel_id, user, to, ts)
+    send_user(to, receipt)
     {:reply, :ok, state}
   end
   def handle_call({:notify_create, channel}, _from, state) do

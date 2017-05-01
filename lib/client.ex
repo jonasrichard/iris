@@ -155,7 +155,7 @@ defmodule Iris.Client do
     send_message(state, message)
   end
 
-  defp handle_channel_status(state, msg) do
+  defp handle_channel_status(state, _msg) do
     state
   end
 
@@ -167,6 +167,7 @@ defmodule Iris.Client do
   end
 
   defp handle_message_received(state, msg) do
+    # TODO move it to channel process
     %{channel: ch_id, from: from, to: to, ts: ts} = msg
     received = Message.message_received(ch_id, from, to, ts)
     Iris.Session.send_message(to, received)
@@ -175,9 +176,9 @@ defmodule Iris.Client do
 
   defp handle_message_read(state, msg) do
     %{channel: ch_id, from: from, to: to, ts: ts} = msg
-    read = Message.message_read(ch_id, from, to, ts)
-    Iris.Session.send_message(to, read)
-    next(state, :established)
+    {state2, pid} = get_channel_pid(state, ch_id)
+    Iris.Channel.message_read(pid, from, ts, to)
+    next(state2, :established)
   end
 
   defp cache_channel_pid(state, channel_id, pid) do

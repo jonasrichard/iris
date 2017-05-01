@@ -15,7 +15,7 @@ defmodule Iris.History do
                    messages: [message],
                    index: []}
         |> DbHistory.write!
-      [history] ->
+      history ->
         history
         |> append_to_index(message)
     end
@@ -25,7 +25,7 @@ defmodule Iris.History do
     case DbHistory.read!(channel_id) do
       nil ->
         []
-      [history] ->
+      history ->
         # TODO read the index, too
         history.messages
     end
