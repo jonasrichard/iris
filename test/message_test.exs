@@ -19,8 +19,8 @@ defmodule Iris.MessageTest do
   end
 
   test "u1 send message into channel", context do
-    #Iris.Tracer.start([])
-    #:dbg.tpl(Iris.Messenger, :send_read, [])
+    # Iris.Tracer.start([])
+    # :dbg.tpl(Iris.Messenger, :send_read, [])
     %{u1: u1, u2: u2, channel: channel} = context
     # TODO messenger shoud put from in the message
     M.send_msg(u1, %{type: "message",

@@ -109,22 +109,17 @@ defmodule Iris.Message do
     case msg["subtype"] do
       "send" ->
         atomize(msg, [:type, :subtype, :channel, :from, :text])
-        |> to_number([:channel])
       "received" ->
         atomize(msg, [:type, :subtype, :channel, :from, :to, :ts])
-        |> to_number([:channel])
       "read" ->
         atomize(msg, [:type, :subtype, :channel, :from, :to, :ts])
-        |> to_number([:channel])
     end
   end
   def parse(%{"type" => "channel.history"} = msg) do
     atomize(msg, [:type, :channel])
-    |> to_number([:channel])
   end
   def parse(%{"type" => "channel.status"} = msg) do
     atomize(msg, [:type, :channel])
-    |> to_number([:channel])
   end
   def parse(%{"type" => "channel.list"}) do
     {:ok, %{type: "channel.list"}}
@@ -183,20 +178,5 @@ defmodule Iris.Message do
               {:cont, Map.put(map, field, value)}
           end
         end)
-  end
-
-  defp to_number({:ok, map}, keys) do
-    result =
-      keys
-      |> Enum.reduce(map,
-                     fn(key, acc) ->
-                       case acc[key] do
-                         n when is_integer(n) ->
-                           acc
-                         b ->
-                           Map.put(acc, key, String.to_integer(b))
-                       end
-                     end)
-    {:ok, result}
   end
 end

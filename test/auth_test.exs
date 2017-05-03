@@ -12,7 +12,7 @@ defmodule Iris.AuthTest do
     {:ok, session} = M.recv_msg(pid)
 
     assert session["type"] == "authenticated"
-    assert is_number(session["sessionId"])
+    assert session["sessionId"] != nil
   end
 
   test "unsuccessful authentication" do

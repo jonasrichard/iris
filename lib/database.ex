@@ -43,6 +43,7 @@ defdatabase Database do
 
   def id do
     :erlang.phash2({node(), System.os_time()}, 0xffffffff)
+    |> Integer.to_string()
   end
 
   defp join(other_node) do

@@ -60,7 +60,7 @@ defmodule Iris.ClientSup do
 
   def init(_) do
     children = [
-      worker(Iris.Client, [restart: temporary])
+      worker(Iris.Client, [], [restart: :temporary])
     ]
     supervise(children, strategy: :simple_one_for_one)
   end
@@ -82,7 +82,7 @@ defmodule Iris.ChannelSup do
 
   def init(_) do
     children = [
-      worker(Iris.Channel, [restart: temporary])
+      worker(Iris.Channel, [], [restart: :temporary])
     ]
     supervise(children, strategy: :simple_one_for_one)
   end
