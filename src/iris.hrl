@@ -1,6 +1,0 @@
-
--record(user, {
-          username,
-          password
-         }).
-
