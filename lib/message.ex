@@ -54,7 +54,8 @@ defmodule Iris.Message do
   end
 
   def message_send(channel_id, from, text) do
-    message_helper(channel_id, from, ts(), text)
+    channel_id
+    |> generic_message(from, ts(), text)
     |> Map.put(:subtype, "send")
   end
 
@@ -66,30 +67,33 @@ defmodule Iris.Message do
   end
 
   def message_incoming(channel_id, from, text) do
-    message_helper(channel_id, from, ts(), text)
+    channel_id
+    |> generic_message(from, ts(), text)
     |> Map.put(:subtype, "incoming")
   end
 
   def message_received(channel_id, from, to, ts) do
-    message_helper(channel_id, from, ts)
+    channel_id
+    |> generic_message(from, ts)
     |> Map.put(:subtype, "received")
     |> Map.put(:to, to)
   end
 
   def message_read(channel_id, from, to, ts) do
-    message_helper(channel_id, from, ts)
+    channel_id
+    |> generic_message(from, ts)
     |> Map.put(:subtype, "read")
     |> Map.put(:to, to)
   end
 
-  defp message_helper(channel_id, from, ts) do
+  defp generic_message(channel_id, from, ts) do
     %{type: "message",
       channel: channel_id,
       from: from,
       ts: ts}
   end
 
-  defp message_helper(channel_id, from, ts, text) do
+  defp generic_message(channel_id, from, ts, text) do
     %{type: "message",
       channel: channel_id,
       from: from,
@@ -156,15 +160,16 @@ defmodule Iris.Message do
       {:error, _} = error ->
         error
       map ->
-        Enum.reduce(optional, map,
-            fn(field, acc) ->
-              case msg[Atom.to_string(field)] do
-                nil ->
-                  acc
-                value ->
-                  Map.put(acc, field, value)
-              end
-            end)
+        Enum.reduce(optional, map, &atomize_field/3)
+    end
+  end
+
+  defp atomize_field(msg, map, field) do
+    case msg[Atom.to_string(field)] do
+      nil ->
+        map
+      value ->
+        Map.put(map, field, value)
     end
   end
 

@@ -119,7 +119,8 @@ defmodule Iris.Channel do
   end
 
   defp send_user(user, message) do
-    Iris.Session.find_by_name(user)
+    user
+    |> Iris.Session.find_by_name()
     |> single(fn(session) -> send session.pid, {:route, message} end)
   end
 

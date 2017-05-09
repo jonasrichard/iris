@@ -128,7 +128,8 @@ defmodule Iris.Client do
 
   defp handle_channel_history(state, %{channel: channel_id}) do
     messages =
-      Iris.History.read_history(channel_id)
+      channel_id
+      |> Iris.History.read_history()
       |> Enum.map(&(Message.message_archive(&1)))
     state
     |> send_message(Message.channel_history(channel_id, messages))
