@@ -48,10 +48,10 @@ defdatabase Database do
 
   defp join(other_node) do
     extras = Amnesia.info(:extra_db_nodes)
-    Logger.info("mnesia nodes: #{extras}")
+    Logger.info fn -> "mnesia nodes: #{extras}" end
 
     if not other_node in extras do
-      Logger.info("Add #{other_node} to extra_db_nodes")
+      Logger.info fn -> "Add #{other_node} to extra_db_nodes" end
       {:ok, _} = :mnesia.change_config(:extra_db_nodes,
                                        [other_node | extras])
     end
@@ -72,10 +72,10 @@ defdatabase Database do
     |> Enum.filter(&(&1 != :schema))
     |> Enum.map(&({&1, table_storage(other_node, &1)}))
     |> Enum.each(fn {table, storage} ->
-                   Logger.info("Change #{table} to #{storage}")
+                   Logger.info fn -> "Change #{table} to #{storage}" end
                    Amnesia.Table.add_copy(table, node(), storage)
                  end)
-    Logger.info("Copying schema to #{other_node}")
+    Logger.info fn -> "Copying schema to #{other_node}" end
     #Amnesia.Table.copying(:schema, other_node, :disk)
   end
 

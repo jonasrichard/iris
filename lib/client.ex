@@ -77,7 +77,7 @@ defmodule Iris.Client do
     end
   end
   def connected(event, state) do
-    Logger.debug("Got an unknown message #{event}")
+    Logger.debug fn -> "Got an unknown message #{event}" end
     {:next_state, :connected, state}
   end
 

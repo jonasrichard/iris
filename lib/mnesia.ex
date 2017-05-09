@@ -21,7 +21,7 @@ defmodule Iris.Mnesia do
             exit(error)
         end
       extras ->
-        Logger.info("mnesia already has extra db nodes: #{extras}")
+        Logger.info fn -> "mnesia already has extra db nodes: #{extras}" end
     end
   end
 
@@ -45,10 +45,10 @@ defmodule Iris.Mnesia do
 
   def join(other_node) do
     extras = :mnesia.system_info(:extra_db_nodes)
-    Logger.info("mnesia nodes: #{extras}")
+    Logger.info fn -> "mnesia nodes: #{extras}" end
 
     if other_node in extras do
-      Logger.info("Add #{other_node} to extra_db_nodes")
+      Logger.info fn -> "Add #{other_node} to extra_db_nodes" end
       {:ok, _} = :mnesia.change_config(:extra_db_nodes, [other_node | extras])
     end
 
@@ -66,7 +66,7 @@ defmodule Iris.Mnesia do
     |> Enum.filter(&(&1 != :schema))
     |> Enum.map(&({&1, table_type(other_node, &1)}))
     |> Enum.each(fn {table, type} ->
-                   Logger.info("Change #{table} to #{type}")
+                   Logger.info fn -> "Change #{table} to #{type}" end
                    :mnesia.add_table_copy(table, node(), type)
                  end)
   end

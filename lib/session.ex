@@ -9,12 +9,12 @@ defmodule Iris.Session do
              |> Enum.each(fn(session) -> send session.pid, :kick_out end)
     # Save new session
     id = Database.id()
-    Logger.debug("Session created with #{id} for user #{user}")
+    Logger.debug fn -> "Session created with #{id} for user #{user}" end
     %S{id: id, pid: pid, user: user} |> S.write!
   end
 
   def delete(id) do
-    Logger.debug("Session #{id} is removed")
+    Logger.debug fn -> "Session #{id} is removed" end
     S.delete!(id)
   end
 
