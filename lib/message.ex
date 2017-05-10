@@ -161,6 +161,7 @@ defmodule Iris.Message do
         error
       map ->
         Enum.reduce(optional, map, fn(field, map) -> atomize_field(msg, map, field) end)
+        #Enum.reduce(optional, map, &(atomize_field(msg, &2, &1)))
     end
   end
 
