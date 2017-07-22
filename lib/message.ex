@@ -160,7 +160,7 @@ defmodule Iris.Message do
       {:error, _} = error ->
         error
       map ->
-        Enum.reduce(optional, map, &atomize_field/3)
+        Enum.reduce(optional, map, fn(field, map) -> atomize_field(msg, map, field) end)
     end
   end
 

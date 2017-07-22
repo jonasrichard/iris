@@ -113,11 +113,17 @@ defmodule Iris.Client do
     |> next(:established)
   end
   def established(%{type: "bye"} = _event, state) do
-    {:stop, :normal, state}
+    state
+    |> send_message(Message.bye())
+    |> stop()
   end
 
   defp next(state, state_name) do
     {:next_state, state_name, state}
+  end
+
+  defp stop(state) do
+    {:stop, :normal, state}
   end
 
   defp send_message(%State{socket: ws} = state, message) do
