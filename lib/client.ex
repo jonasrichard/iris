@@ -163,6 +163,7 @@ defmodule Iris.Client do
   end
 
   defp handle_channel_status(state, _msg) do
+    # TODO implement the read cursor list for a channel
     state
   end
 

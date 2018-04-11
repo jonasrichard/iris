@@ -39,7 +39,7 @@ defmodule Iris.MainSup do
                   ]}
                 ])
     Logger.info("Starting cowboy")
-    :cowboy.start_clear(:iris_http_listener, 5,
+    :cowboy.start_clear(:iris_http_listener,
                         [port: 8080],
                         %{env: %{dispatch: dispatch}})
   end

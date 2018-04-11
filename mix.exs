@@ -18,14 +18,15 @@ defmodule Iris.Mixfile do
 
   defp deps do
     [{:amnesia, "~> 0.2.7"},
-     {:cowboy, github: "ninenines/cowboy", tag: "2.0.0-pre.7"},
-     {:credo, "~> 0.7", only: [:test, :dev]},
+     {:cowboy, "~> 2.3.0"},
+     {:cowlib, "~> 2.2.1", override: true},
+     {:credo, "~> 0.9.1", only: [:test, :dev]},
      #{:dogma, "~> 0.1.8", only: :dev},
-     {:excoveralls, "~> 0.6", only: :test},
+     {:excoveralls, "~> 0.8.1", only: :test},
      {:gun, github: "ninenines/gun"},
-     {:httpoison, "~> 0.11.1", only: :test},
-     {:poison, "~> 1.5.2"},
-     {:ranch, "~> 1.3.2", override: true}
+     {:httpoison, "~> 1.1.0", only: :test},
+     {:poison, "~> 3.1.0"},
+     {:ranch, "~> 1.5.0", override: true}
     ]
   end
 end
