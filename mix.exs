@@ -13,21 +13,18 @@ defmodule Iris.Mixfile do
   end
 
   def application do
-    [extra_applications: [:logger, :cowboy, :mnesia],
+    [extra_applications: [:logger],
      mod: {Iris.App, []}]
   end
 
   defp deps do
-    [{:amnesia, "~> 0.2.7"},
-     {:cowboy, "~> 2.3.0"},
-     {:cowlib, "~> 2.2.1", override: true},
-     {:credo, "~> 0.9.1", only: [:test, :dev]},
+    [#{:cowboy, github: "ninenines/cowboy", tag: "2.0.0-pre.7"},
+     {:credo, "~> 0.7", only: [:test, :dev]},
      #{:dogma, "~> 0.1.8", only: :dev},
-     {:excoveralls, "~> 0.8.1", only: :test},
-     {:gun, github: "ninenines/gun"},
-     {:httpoison, "~> 1.1.0", only: :test},
-     {:poison, "~> 3.1.0"},
-     {:ranch, "~> 1.5.0", override: true}
+     {:excoveralls, "~> 0.7.1", only: :test},
+     {:httpoison, "~> 1.3.1", only: :test},
+     {:instream, "~> 0.18"},
+     {:poison, "~> 3.0"}
     ]
   end
 end

@@ -1,29 +1,20 @@
 defmodule Iris.Session do
   require Logger
-  alias Database.Session, as: S
 
   def save(pid, user) do
-    # Kick out previous sessions
-    with sessions when is_list(sessions) <- find_by_name(user),
-         do: sessions
-             |> Enum.each(fn(session) -> send session.pid, :kick_out end)
-    # Save new session
-    id = Database.id()
-    Logger.debug fn -> "Session created with #{id} for user #{user}" end
-    %S{id: id, pid: pid, user: user} |> S.write!
+    Logger.debug fn -> "Session created" end
   end
 
   def delete(id) do
     Logger.debug fn -> "Session #{id} is removed" end
-    S.delete!(id)
   end
 
   def find_by_id(id) do
-    S.read!(id)
+    nil
   end
 
   def find_by_name(user) do
-    S.read_at!(user, :user)
+    nil
   end
 
   def send_message(user, message) do
