@@ -1,7 +1,7 @@
 defmodule Iris.Session do
   require Logger
 
-  def save(pid, user) do
+  def save(_pid, _user) do
     Logger.debug fn -> "Session created" end
   end
 
@@ -9,11 +9,11 @@ defmodule Iris.Session do
     Logger.debug fn -> "Session #{id} is removed" end
   end
 
-  def find_by_id(id) do
+  def find_by_id(_id) do
     nil
   end
 
-  def find_by_name(user) do
+  def find_by_name(_user) do
     nil
   end
 
