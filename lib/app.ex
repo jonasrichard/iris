@@ -3,23 +3,27 @@ defmodule Iris.App do
   require Logger
 
   def start(_type, _args) do
-    Iris.MainSup.start_link()
+    #import Supervisor.Spec # , warn: false
+    Iris.Database.init()
+    children = [
+      Iris.Event.Queue,
+      #Iris.Metrics,
+      #Iris.Metrics.Reporter,
+      Plug.Cowboy.child_spec(scheme: :http, plug: Iris.Router)
+    ]
+    #
+    opts = [strategy: :one_for_one, name: Iris.Main.Supervisor]
+    Supervisor.start_link(children, opts)
   end
 end
 
-defmodule Iris.MainSup do
-  use Supervisor
-  require Logger
+defmodule Iris.Router do
+  use Plug.Router
 
-  def start_link do
-    Supervisor.start_link(__MODULE__, [], [name: __MODULE__])
-  end
+  plug :match
+  plug :dispatch
 
-  def init(_) do
-    children = [
-      Iris.Metrics,
-      Iris.Metrics.Reporter
-    ]
-    Supervisor.init(children, strategy: :one_for_one)
+  match _ do
+    send_resp(conn, 200, "Default answer")
   end
 end
