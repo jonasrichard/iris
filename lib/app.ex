@@ -6,6 +6,7 @@ defmodule Iris.App do
     #import Supervisor.Spec # , warn: false
     Iris.Database.init()
     children = [
+      Iris.Event.Processor,
       Iris.Event.Queue,
       #Iris.Metrics,
       #Iris.Metrics.Reporter,
