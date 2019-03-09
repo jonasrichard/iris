@@ -3,7 +3,25 @@ use Amnesia
 defdatabase Iris.Database do
   require Logger
 
-  deftable Event, [:id, :ts, :message]
+  deftable Event, [:id, :ts, :message] do
+    @type t :: %Event{
+      id:       String.t,
+      ts:       String.t,
+      message:  term
+    }
+  end
+
+  deftable Channel, [:id, :name, :owner, :members, :created_ts, :last_message, :last_ts] do
+    @type t :: %Channel{
+      id:           String.t,
+      name:         String.t,
+      owner:        String.t,
+      members:      list,
+      created_ts:   String.t,
+      last_message: %Iris.Model.Message{},
+      last_ts:      String.t
+    }
+  end
 
   #  deftable User, [:id, :name, :password]
   #  deftable Session, [:id, :pid, :user], [index: [:user]]

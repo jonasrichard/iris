@@ -130,7 +130,7 @@ angular.module('chat', [])
           if (chat.ws && chat.ws.readyState) {
               chat.ws.close();
           }
-          chat.open("ws://localhost:" + host + "/ws");
+          chat.open("ws://localhost:" + host + "/chat");
       };
 
       chat.showLoginDialog = function() {
@@ -141,7 +141,7 @@ angular.module('chat', [])
           if (!pass) {
               pass = "";
           }
-          chat.send({type: "auth", user: user, pass: pass});
+          chat.send({type: "session", sender_id: user, pass: pass});
       };
 
       chat.send = function(obj) {

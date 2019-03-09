@@ -22,11 +22,11 @@ defmodule Iris.Model.Channel.Created do
 end
 
 defmodule Iris.Model.Session.Create do
-  defstruct [:sender_id, :password]
+  defstruct [:id, :sender_id, :password]
   # metadata can come here like ip address, etc
 end
 
 defmodule Iris.Model.Session.Created do
-  defstruct [:id, :recipient_id]
+  defstruct [:id, :sender_id]
   # features can come here
 end

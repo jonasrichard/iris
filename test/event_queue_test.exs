@@ -23,4 +23,11 @@ defmodule Iris.Event.QueueTest do
         flunk("Processor hasn't been invoked")
     end
   end
+
+  test "remove acked message" do
+    message = Iris.Fixture.message()
+    Iris.Event.Queue.store("2", message)
+    Iris.Event.Queue.ack("2")
+    assert Iris.Database.Event.read!("2") == nil
+  end
 end
