@@ -18,12 +18,12 @@ defmodule Iris.Event.Queue do
     GenServer.call(Process.whereis(__MODULE__), {:ack, event_id})
   end
 
-  @impl
+  @impl true
   def init(_) do
     {:ok, %{}}
   end
 
-  @impl
+  @impl true
   def handle_call({:store, id, message}, _from, state) do
     %Event{id: id, ts: :os.timestamp(), message: message}
     |> Event.write! 

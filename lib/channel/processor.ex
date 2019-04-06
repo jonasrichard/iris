@@ -1,6 +1,7 @@
 defmodule Iris.Channel.Processor do
 
   alias Iris.Database.Channel, as: Channel
+  alias Iris.Database.Messages, as: Messages
 
   @spec process(%Iris.Database.Event{}) :: term
   def process(event) do
@@ -38,6 +39,18 @@ defmodule Iris.Channel.Processor do
       channel ->
         %{channel | last_message: message, last_ts: message.created_ts}
         |> Channel.write!
+        append_message(message)
+    end
+  end
+
+  defp append_message(message) do
+    case Messages.read!(message.channel_id) do
+      nil ->
+        %Messages{channel_id: message.channel_id, messages: [message]}
+        |> Messages.write!
+      messages ->
+        %{messages | messages: messages.messages ++ [message]}
+        |> Messages.write!
     end
   end
 end

@@ -8,4 +8,9 @@ defmodule Iris.Debug do
     Iris.Database.Event.match!([])
     |> IO.inspect
   end
+
+  def messages do
+    Iris.Database.Messages.match!([])
+    |> IO.inspect
+  end
 end

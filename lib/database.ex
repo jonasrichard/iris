@@ -23,6 +23,13 @@ defdatabase Iris.Database do
     }
   end
 
+  deftable Messages, [:channel_id, :messages] do
+    @type t :: %Messages{
+      channel_id:   String.t,
+      messages:     list
+    }
+  end
+
   #  deftable User, [:id, :name, :password]
   #  deftable Session, [:id, :pid, :user], [index: [:user]]
   #  deftable Channel, [:id, :name, :owner, :members, :created_ts, :last_ts]
@@ -39,22 +46,10 @@ defdatabase Iris.Database do
         Amnesia.Table.copying(:schema, node(), :disk)
         Iris.Database.Event.create()
         Iris.Database.Event.copying(node(), :disk)
-        #        Database.User.create()
-        #        Database.User.copying(node(), :disk)
-        #        Database.Session.create()
-        #        Database.Session.copying(node(), :memory)
-        #        Database.Channel.create()
-        #        Database.Channel.copying(node(), :disk)
-        #        Database.ChannelProc.create()
-        #        Database.ChannelProc.copying(node(), :memory)
-        #        Database.Cursor.create()
-        #        Database.Cursor.copying(node(), :disk)
-        #        Database.UserChannel.create()
-        #        Database.UserChannel.copying(node(), :disk)
-        #        Database.History.create()
-        #        Database.History.copying(node(), :disk)
-        #        Database.HistoryIndex.create()
-        #        Database.HistoryIndex.copying(node(), :disk)
+        Iris.Database.Channel.create()
+        Iris.Database.Channel.copying(node(), :disk)
+        Iris.Database.Messages.create()
+        Iris.Database.Messages.copying(node(), :disk)
       "NO" ->
         :ok
       node_name ->

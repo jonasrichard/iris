@@ -18,13 +18,13 @@ defmodule Iris.Event.Processor do
     GenServer.cast(Process.whereis(__MODULE__), {:register, callback})
   end
 
-  @impl
+  @impl true
   def init(opts) do
     IO.puts("opts #{inspect opts}")
     {:ok, %{callbacks: Keyword.get(opts, :callbacks, [])}}
   end
 
-  @impl
+  @impl true
   def handle_cast({:process, event}, state) do
     for m <- state[:callbacks], do: m.(event)
     Iris.Event.Queue.ack(event.id)

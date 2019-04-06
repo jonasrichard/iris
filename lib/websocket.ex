@@ -52,7 +52,7 @@ defmodule Iris.Receiver.Decoder do
     case Jason.decode(json) do
       {:ok, obj} ->
         decode_by_type(obj)
-      {:error, reason} ->
+      {:error, _reason} ->
         :error
     end
   end
@@ -67,6 +67,10 @@ defmodule Iris.Receiver.Decoder do
         created_ts: json_map["created_ts"]
       }}
   end
+  #defp decode_by_type(%{"type" => ""} = json_map) do
+  #  {:ok,
+  #  }}
+  #end
   defp decode_by_type(%{"type" => "session"} = json_map) do
     {:ok,
       %Iris.Model.Session.Create{
