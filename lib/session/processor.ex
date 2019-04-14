@@ -5,6 +5,7 @@ defmodule Iris.Session.Processor do
     case event.message.__struct__ do
       Iris.Model.Session.Create ->
         Iris.Session.Connection.new_connection(event.message.sender_id)
+
       _ ->
         :ok
     end

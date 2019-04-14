@@ -2,12 +2,12 @@ defmodule Iris.Metrics.Erlang do
   use Instream.Series
 
   series do
-    database      "iris"
-    measurement   "erlang"
+    database("iris")
+    measurement("erlang")
 
-    tag :server
+    tag(:server)
 
-    field   :total
-    field   :processes
+    field(:total)
+    field(:processes)
   end
 end

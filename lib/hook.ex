@@ -2,7 +2,7 @@ defmodule Iris.Hook do
   use GenServer
 
   def start_link do
-    GenServer.start_link(__MODULE__, [], [name: __MODULE__])
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def add(hook, module, fun, prio) do
@@ -17,6 +17,7 @@ defmodule Iris.Hook do
     case :ets.lookup(:hooks, hook) do
       [] ->
         :ok
+
       [{_, callbacks}] ->
         run_callbacks(callbacks, args)
     end
@@ -32,21 +33,27 @@ defmodule Iris.Hook do
       [{^hook, callbacks}] ->
         new_cbs = sort_by_prio([{module, fun, prio} | callbacks])
         :ets.insert(:hooks, {hook, new_cbs})
+
       [] ->
         :ets.insert(:hooks, {hook, [{module, fun, prio}]})
     end
+
     {:reply, :ok, state}
   end
+
   def handle_call({:delete, hook, module, fun, prio}, _from, state) do
     case :ets.lookup(:hooks, hook) do
       [] ->
         :ok
+
       [{^hook, callbacks}] ->
         new_cbs = List.delete(callbacks, {module, fun, prio})
         :ets.insert(:hooks, {hook, new_cbs})
     end
+
     {:reply, :ok, state}
   end
+
   def handle_call(other, _from, state) do
     {:reply, {:error, {:invalid_call, other}}, state}
   end
@@ -54,6 +61,7 @@ defmodule Iris.Hook do
   defp run_callbacks([], args) do
     args
   end
+
   defp run_callbacks([{module, fun, _prio} | rest], args) do
     try do
       apply(module, fun, args)
@@ -63,12 +71,16 @@ defmodule Iris.Hook do
     else
       :ok ->
         run_callbacks(rest, args)
+
       {:ok, new_args} ->
         run_callbacks(rest, new_args)
+
       :stop ->
         :ok
+
       {:stop, result} ->
         {:ok, result}
+
       {:error, _reason} = error ->
         error
     end

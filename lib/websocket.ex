@@ -8,8 +8,8 @@ defmodule Iris.Receiver.Websocket do
   end
 
   def websocket_init(state) do
-    #{:ok, client} = Iris.ClientSup.start_child(self())
-    #{:ok, Map.put(state, :client, client)}
+    # {:ok, client} = Iris.ClientSup.start_child(self())
+    # {:ok, Map.put(state, :client, client)}
     {:ok, state}
   end
 
@@ -18,6 +18,7 @@ defmodule Iris.Receiver.Websocket do
     _ = Iris.Receiver.Main.handle(json)
     {:reply, {:text, "{}"}, state}
   end
+
   def websocket_handle(_, state) do
     {:reply, {:text, ""}, state}
   end
@@ -25,6 +26,7 @@ defmodule Iris.Receiver.Websocket do
   def websocket_info({:text, _} = frame, state) do
     {:reply, frame, state}
   end
+
   def websocket_info(_, state) do
     {:reply, state}
   end
@@ -40,6 +42,7 @@ defmodule Iris.Receiver.Main do
       {:ok, message} ->
         Iris.Event.Queue.store(message.id, message)
         {:ok, message}
+
       {:error, _} = error ->
         error
     end
@@ -47,11 +50,11 @@ defmodule Iris.Receiver.Main do
 end
 
 defmodule Iris.Receiver.Decoder do
-
   def decode(json) do
     case Jason.decode(json) do
       {:ok, obj} ->
         decode_by_type(obj)
+
       {:error, _reason} ->
         :error
     end
@@ -59,25 +62,27 @@ defmodule Iris.Receiver.Decoder do
 
   defp decode_by_type(%{"type" => "message"} = json_map) do
     {:ok,
-      %Iris.Model.Message{
-        id: json_map["id"],
-        sender_id: json_map["sender_id"],
-        channel_id: json_map["channel_id"],
-        body: json_map["body"],
-        created_ts: json_map["created_ts"]
-      }}
+     %Iris.Model.Message{
+       id: json_map["id"],
+       sender_id: json_map["sender_id"],
+       channel_id: json_map["channel_id"],
+       body: json_map["body"],
+       created_ts: json_map["created_ts"]
+     }}
   end
-  #defp decode_by_type(%{"type" => ""} = json_map) do
+
+  # defp decode_by_type(%{"type" => ""} = json_map) do
   #  {:ok,
   #  }}
-  #end
+  # end
   defp decode_by_type(%{"type" => "session"} = json_map) do
     {:ok,
-      %Iris.Model.Session.Create{
-        id: json_map["id"],
-        sender_id: json_map["sender_id"]
-      }}
+     %Iris.Model.Session.Create{
+       id: json_map["id"],
+       sender_id: json_map["sender_id"]
+     }}
   end
+
   defp decode_by_type(%{"type" => type}) do
     {:error, "Unknown type #{type}"}
   end

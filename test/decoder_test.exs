@@ -16,6 +16,7 @@ defmodule Iris.Receiver.DecoderTest do
       "created_ts": "2016-09-04T14:52:23.976"
     }
     """
+
     assert {:ok, decoded} = Decoder.decode(json)
     assert decoded.id == "123-567"
     assert decoded.sender_id == "9"

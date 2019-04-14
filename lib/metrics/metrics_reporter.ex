@@ -1,9 +1,9 @@
 defmodule Iris.Metrics.Reporter do
-
   alias Iris.Metrics.Erlang, as: Erlang
 
   def child_spec(_args) do
-    %{id: __MODULE__,
+    %{
+      id: __MODULE__,
       start: {__MODULE__, :start_link, []},
       restart: :permanent,
       shutdown: 5000,
@@ -24,10 +24,16 @@ defmodule Iris.Metrics.Reporter do
   defp report() do
     memory = :erlang.memory()
     data = %Erlang{}
-    data = %{data |
-      fields: %{data.fields |
-        total: Keyword.get(memory, :total),
-        processes: Keyword.get(memory, :processes)}}
+
+    data = %{
+      data
+      | fields: %{
+          data.fields
+          | total: Keyword.get(memory, :total),
+            processes: Keyword.get(memory, :processes)
+        }
+    }
+
     data = %{data | tags: %{data.tags | server: "iris"}}
     Iris.Metrics.write(data)
   end

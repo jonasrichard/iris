@@ -9,7 +9,7 @@ defmodule Iris.ClientTest do
     {:ok, w1} = ProcessMock.start_link()
     {:ok, c1} = Client.start_link(w1)
 
-    send c1, {:route, Message.hello()}
+    send(c1, {:route, Message.hello()})
     assert_receive %{"type" => "hello"}
   end
 end
@@ -27,14 +27,17 @@ defmodule Iris.ProcessMock do
   end
 
   def handle_info(msg, state) do
-    Logger.debug("Info #{inspect msg}")
+    Logger.debug("Info #{inspect(msg)}")
+
     case msg do
       {:text, text} ->
         {:ok, json} = Poison.decode(text)
-        send state[:pid], json
+        send(state[:pid], json)
+
       _ ->
         :ok
     end
+
     {:noreply, state}
   end
 end

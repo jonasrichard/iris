@@ -18,9 +18,11 @@ defmodule Iris.Client do
 
   def init([ws_pid]) do
     Process.monitor(ws_pid)
+
     state =
       %State{socket: ws_pid}
       |> send_message(Iris.Message.hello())
+
     {:ok, :connected, state}
   end
 
@@ -29,13 +31,16 @@ defmodule Iris.Client do
     |> send_message(message)
     |> next(name)
   end
-  def handle_info({:'DOWN', _ref, :process, _pid, _reason}, _name, state) do
+
+  def handle_info({:DOWN, _ref, :process, _pid, _reason}, _name, state) do
     {:stop, :normal, state}
   end
+
   def handle_info(:kick_out, _name, state) do
     Logger.info("User is kicked out")
     {:stop, :normal, state}
   end
+
   def handle_info(_info, name, state) do
     {:next_state, name, state}
   end
@@ -56,6 +61,7 @@ defmodule Iris.Client do
     case reason do
       :normal ->
         Iris.Session.delete(state.session)
+
       _ ->
         :ok
     end
@@ -63,21 +69,25 @@ defmodule Iris.Client do
 
   def connected(%{type: "auth"} = event, state) do
     user = event[:user]
+
     case event[:pass] do
       ^user ->
         session = Iris.Session.save(self(), user)
+
         state
         |> send_message(Iris.Message.session(session.id))
         |> Map.merge(%{user: user, session: session.id})
         |> next(:established)
+
       _ ->
         state
         |> send_message(Iris.Message.error("Password doesn't match"))
         |> next(:connected)
     end
   end
+
   def connected(event, state) do
-    Logger.debug fn -> "Got an unknown message #{event}" end
+    Logger.debug(fn -> "Got an unknown message #{event}" end)
     {:next_state, :connected, state}
   end
 
@@ -86,32 +96,39 @@ defmodule Iris.Client do
       "send" ->
         event2 = Map.put(event, :ts, Message.ts())
         handle_message_send(state, event2)
+
       "received" ->
         handle_message_received(state, event)
+
       "read" ->
         handle_message_read(state, event)
     end
   end
+
   def established(%{type: "channel.history"} = event, state) do
     state
     |> handle_channel_history(event)
     |> next(:established)
   end
+
   def established(%{type: "channel.status"} = event, state) do
     state
     |> handle_channel_status(event)
     |> next(:established)
   end
+
   def established(%{type: "channel.create"} = event, state) do
     state
     |> handle_create_channel(event)
     |> next(:established)
   end
+
   def established(%{type: "channel.list"}, state) do
     state
     |> handle_channel_list()
     |> next(:established)
   end
+
   def established(%{type: "bye"} = _event, state) do
     state
     |> send_message(Message.bye())
@@ -128,7 +145,7 @@ defmodule Iris.Client do
 
   defp send_message(%State{socket: ws} = state, message) do
     {:ok, text} = Poison.encode(message)
-    send ws, {:text, text}
+    send(ws, {:text, text})
     state
   end
 
@@ -136,7 +153,8 @@ defmodule Iris.Client do
     messages =
       channel_id
       |> Iris.History.read_history()
-      |> Enum.map(&(Message.message_archive(&1)))
+      |> Enum.map(&Message.message_archive(&1))
+
     state
     |> send_message(Message.channel_history(channel_id, messages))
   end
@@ -154,10 +172,12 @@ defmodule Iris.Client do
       case UserChannel.read!(state.user) do
         nil ->
           []
+
         uc ->
           uc.channel_ids
-          |> Enum.map(&(Channel.read!(&1)))
+          |> Enum.map(&Channel.read!(&1))
       end
+
     message = Message.channel_list(channels)
     send_message(state, message)
   end
@@ -199,6 +219,7 @@ defmodule Iris.Client do
         {:ok, pid} = Iris.Channel.ensure_channel_by_id(channel_id)
         state2 = cache_channel_pid(state, channel_id, pid)
         {state2, pid}
+
       pid ->
         {state, pid}
     end

@@ -1,5 +1,4 @@
 defmodule Iris.Message do
-
   def hello do
     %{type: "hello"}
   end
@@ -21,36 +20,39 @@ defmodule Iris.Message do
   end
 
   def channel_created(channel) do
-    %{type: "channel.created",
+    %{
+      type: "channel.created",
       name: channel.name,
       channelId: channel.id,
-      members: channel.members}
+      members: channel.members
+    }
   end
 
   def channel_invited(channel) do
-    %{type: "channel.invited",
+    %{
+      type: "channel.invited",
       name: channel.name,
       channelId: channel.id,
-      members: channel.members}
+      members: channel.members
+    }
   end
 
   def channel(channel) do
-    %{id: channel.id,
+    %{
+      id: channel.id,
       name: channel.name,
       members: channel.members,
       created_ts: channel.created_ts,
-      last_ts: channel.last_ts}
+      last_ts: channel.last_ts
+    }
   end
 
   def channel_history(channel_id, messages) do
-    %{type: "channel.history",
-      channel: channel_id,
-      messages: messages}
+    %{type: "channel.history", channel: channel_id, messages: messages}
   end
 
   def channel_list(channels) do
-    %{type: "channel.list",
-      channels: channels}
+    %{type: "channel.list", channels: channels}
   end
 
   def message_send(channel_id, from, text) do
@@ -60,10 +62,7 @@ defmodule Iris.Message do
   end
 
   def message_stored(channel_id, ts) do
-    %{type: "message",
-      subtype: "stored",
-      channel: channel_id,
-      ts: ts}
+    %{type: "message", subtype: "stored", channel: channel_id, ts: ts}
   end
 
   def message_incoming(channel_id, from, text) do
@@ -87,53 +86,56 @@ defmodule Iris.Message do
   end
 
   defp generic_message(channel_id, from, ts) do
-    %{type: "message",
-      channel: channel_id,
-      from: from,
-      ts: ts}
+    %{type: "message", channel: channel_id, from: from, ts: ts}
   end
 
   defp generic_message(channel_id, from, ts, text) do
-    %{type: "message",
-      channel: channel_id,
-      from: from,
-      ts: ts,
-      text: text}
+    %{type: "message", channel: channel_id, from: from, ts: ts, text: text}
   end
 
   def message_archive(db_message) do
-    %{type: "message",
+    %{
+      type: "message",
       subtype: "archive",
       from: db_message.from,
       ts: db_message.ts,
-      text: db_message.text}
+      text: db_message.text
+    }
   end
 
   def parse(%{"type" => "message"} = msg) do
     case msg["subtype"] do
       "send" ->
         atomize(msg, [:type, :subtype, :channel, :from, :text])
+
       "received" ->
         atomize(msg, [:type, :subtype, :channel, :from, :to, :ts])
+
       "read" ->
         atomize(msg, [:type, :subtype, :channel, :from, :to, :ts])
     end
   end
+
   def parse(%{"type" => "channel.history"} = msg) do
     atomize(msg, [:type, :channel])
   end
+
   def parse(%{"type" => "channel.status"} = msg) do
     atomize(msg, [:type, :channel])
   end
+
   def parse(%{"type" => "channel.list"}) do
     {:ok, %{type: "channel.list"}}
   end
+
   def parse(%{"type" => "channel.create"} = msg) do
     atomize(msg, [:type, :name, :invitees])
   end
+
   def parse(%{"type" => "bye"}) do
     {:ok, %{type: "bye"}}
   end
+
   def parse(%{"type" => "auth"} = msg) do
     atomize(msg, [:type, :user, :pass])
   end
@@ -150,6 +152,7 @@ defmodule Iris.Message do
     case atomize2(msg, mandatory, optional) do
       {:error, _} = error ->
         error
+
       map ->
         {:ok, map}
     end
@@ -159,9 +162,10 @@ defmodule Iris.Message do
     case mandatories(msg, mandatory) do
       {:error, _} = error ->
         error
+
       map ->
-        Enum.reduce(optional, map, fn(field, map) -> atomize_field(msg, map, field) end)
-        #Enum.reduce(optional, map, &(atomize_field(msg, &2, &1)))
+        Enum.reduce(optional, map, fn field, map -> atomize_field(msg, map, field) end)
+        # Enum.reduce(optional, map, &(atomize_field(msg, &2, &1)))
     end
   end
 
@@ -169,20 +173,21 @@ defmodule Iris.Message do
     case msg[Atom.to_string(field)] do
       nil ->
         map
+
       value ->
         Map.put(map, field, value)
     end
   end
 
   defp mandatories(msg, mandatory) do
-    Enum.reduce_while(mandatory, %{},
-        fn(field, map) ->
-          case msg[Atom.to_string(field)] do
-            nil ->
-              {:halt, {:error, {"Missing mandatory field #{field}"}}}
-            value ->
-              {:cont, Map.put(map, field, value)}
-          end
-        end)
+    Enum.reduce_while(mandatory, %{}, fn field, map ->
+      case msg[Atom.to_string(field)] do
+        nil ->
+          {:halt, {:error, {"Missing mandatory field #{field}"}}}
+
+        value ->
+          {:cont, Map.put(map, field, value)}
+      end
+    end)
   end
 end
