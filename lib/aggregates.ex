@@ -20,8 +20,9 @@ defmodule Iris.Aggregate do
       # TODO iterate over the members!
       [
         %Iris.Event.InboxMessageArrived{
-          user_id:    event.sender_id,
+          user_id:    event.sender_id,  # this will be the member_id
           channel_id: channel.id,
+          sender_id:  event.sender_id,
           body:       event.body,
           message_ts: event.created_ts
         }

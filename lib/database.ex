@@ -12,25 +12,16 @@ defdatabase Iris.Database do
   end
 
   # Projection for inbox
-  deftable Inbox, [:user_id, :channel_id, :last_message, :last_ts], type: :bag do
+  deftable Inbox, [:user_channel_id, :last_user_id, :last_message, :last_ts] do
     @type t :: %Inbox{
-            user_id: String.t(),
-            channel_id: String.t(),
+            user_channel_id: String.t(),
+            last_user_id: String.t(),
             last_message: term(),
             last_ts: String.t()
           }
-    def from_record({__MODULE__, user_id, channel_id, last_message, last_ts}) do
-      %Inbox{user_id: user_id, channel_id: channel_id, last_message: last_message, last_ts: last_ts}
-    end
 
     def find_item!(user_id, channel_id) do
-      case Inbox.match!(user_id: user_id, channel_id: channel_id) do
-        nil ->
-          nil
-
-        match ->
-          match.values |> hd() |> from_record()
-      end
+      Inbox.read!({user_id, channel_id})
     end
   end
 

@@ -13,9 +13,11 @@ defmodule Iris.MessageTest do
       }
     ]
     |> Iris.CommandDispatcher.send()
+    # TODO how to remove the sleep here?
+    Process.sleep(100)
 
     inbox = Iris.Database.Inbox.find_item!("user_1", "2")
-    IO.inspect inbox
-    assert inbox.user_id == "user_1"
+    assert inbox.user_channel_id == {"user_1", "2"}
+    assert inbox.last_message == "Hey, how are you?"
   end
 end
