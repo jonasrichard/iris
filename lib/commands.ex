@@ -1,10 +1,17 @@
 defmodule Iris.Command do
-  # TODO maybe the create channel has a first text message as well? and other parties?
   defmodule CreateChannel do
-    defstruct [:id, :name, :sender_id]
+    defstruct [:id, :name, :sender_id, :members, :first_message, :ts]
   end
 
   defmodule SendMessage do
-    defstruct [:id, :sender_id, :channel_id, :body, :created_ts]
+    defstruct [:id, :sender_id, :channel_id, :body, :ts]
+  end
+
+  defmodule ReceiveMessage do
+    defstruct [:id, :received_id, :channel_id, :message_id, :ts]
+  end
+
+  defmodule ReadChannel do
+    defstruct [:id, :reader_id, :channel_id, :ts]
   end
 end

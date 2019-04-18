@@ -27,4 +27,12 @@ defmodule Iris.CommandDispatcher do
     apply(module, :handle, [command])
     {:reply, :ok, state}
   end
+
+  # TODO a generic command handler needs to
+  # - read the aggregate
+  # - call a method in the aggregate
+  # - result one or more events
+  # - save them to event bus
+  #
+  # Event bus need to save the event but should react on them async.
 end

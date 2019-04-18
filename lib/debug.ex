@@ -1,12 +1,12 @@
 defmodule Iris.Debug do
+  alias Amnesia.Table.Match
+
   def channels do
-    Iris.Database.Channel.match!([])
-    |> IO.inspect()
+    with %Match{values: values} <- Iris.Database.Channel.match!([]), do: values
   end
 
   def inbox do
-    Iris.Database.Inbox.match!([])
-    |> IO.inspect()
+    with %Match{values: values} <- Iris.Database.Inbox.match!([]), do: values
   end
 
   def cmd_create_channel(id, name, sender_id) do
