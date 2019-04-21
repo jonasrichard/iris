@@ -9,19 +9,13 @@ defmodule Iris.Debug do
     with %Match{values: values} <- Iris.Database.Inbox.match!([]), do: values
   end
 
-  def cmd_create_channel(id, name, sender_id) do
-    %Iris.Command.CreateChannel{id: id, name: name, sender_id: sender_id}
+  def cmd_create_channel(name, sender_id, members, first_message) do
+    Iris.Command.CreateChannel.new(name, sender_id, members, first_message)
     |> Iris.CommandDispatcher.send()
   end
 
-  def cmd_send_message(id, sender_id, channel_id, body) do
-    %Iris.Command.SendMessage{
-      id: id,
-      sender_id: sender_id,
-      channel_id: channel_id,
-      body: body,
-      created_ts: Iris.Util.now_to_utc()
-    }
+  def cmd_send_message(sender_id, channel_id, body) do
+    Iris.Command.SendMessage.new(sender_id, channel_id, body)
     |> Iris.CommandDispatcher.send()
   end
 end

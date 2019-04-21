@@ -21,6 +21,7 @@ defdatabase Iris.Database do
           }
 
     def find_item!(user_id, channel_id) do
+      Logger.info("Finding inbox user: #{user_id} channel: #{channel_id}")
       Inbox.read!({user_id, channel_id})
     end
   end

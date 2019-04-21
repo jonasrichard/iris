@@ -24,6 +24,7 @@ defmodule Iris.Mixfile do
       {:cowboy, "~> 2.6"},
       {:credo, "~> 0.7", only: [:test, :dev]},
       {:distillery, "~> 2.0"},
+      {:elixir_uuid, "~> 1.2"},
       {:excoveralls, "~> 0.10", only: :test},
       {:exquisite, github: "meh/exquisite", override: true},
       {:httpoison, "~> 1.5.0", only: :test},

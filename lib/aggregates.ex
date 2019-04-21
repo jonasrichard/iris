@@ -1,14 +1,12 @@
 defmodule Iris.Aggregate do
   defmodule Channel do
-    defstruct [:id, :name, :owner]
+    defstruct [:id, :name, :owner, :members]
 
+    @doc "Load and reconstruct aggregate by applying changes"
     def load(id) do
       case Iris.Database.Channel.read!(id) do
         nil ->
-          # TODO in this case who stores the channel in event store?
-          # probably we need to store it here, because we know exactly
-          # that the channel doesn't exist
-          %Channel{id: id}
+          nil
 
         item ->
           item
@@ -16,35 +14,74 @@ defmodule Iris.Aggregate do
       end
     end
 
-    def apply(channel, %Iris.Event.MessageSent{} = event) do
-      # TODO iterate over the members!
+    # TODO Does the channel need to check if it already exists?
+    # What is its responsibility?
+    def create_channel(id, name, owner, members, first_message, ts) do
       [
-        %Iris.Event.InboxMessageArrived{
-          user_id:    event.sender_id,  # this will be the member_id
-          channel_id: channel.id,
-          sender_id:  event.sender_id,
-          body:       event.body,
-          message_ts: event.created_ts
+        %Iris.Event.ChannelCreated{
+          id: UUID.uuid4(),
+          channel: id,
+          name: name,
+          owner: owner,
+          members: members
+        },
+        %Iris.Event.MessageSent{
+          id: UUID.uuid4(),
+          sender: owner,
+          channel: id,
+          body: first_message,
+          ts: ts
         }
       ]
+      |> append_events(id)
     end
-    def apply(_channel, %Iris.Event.ChannelCreated{} = _event) do
-      # The changes are already stored in the event store, now we just need
-      # to send the resulted events
-      nil
+
+    def send_message(channel, id, sender, body, ts) do
+      # we can check if the sender can send message here
+      %Iris.Event.MessageSent{
+        id: UUID.uuid4(),
+        # message_id needed
+        sender: sender,
+        channel: channel.id,
+        body: body,
+        ts: ts
+      }
+      |> append_events(id)
     end
 
     defp to_channel(db_item) do
       Enum.reduce(db_item.changes, %Channel{id: db_item.id}, &apply_change/2)
     end
 
-    defp apply_change(change = %Iris.Event.MessageSent{}, acc) do
-      # %{acc | name: "Name", owner: change.sender_id}
+    defp apply_change(_change = %Iris.Event.MessageSent{}, acc) do
       acc
     end
 
     defp apply_change(change = %Iris.Event.ChannelCreated{}, acc) do
-      %{acc | id: change.channel_id, name: change.name, owner: change.sender_id}
+      %{acc | id: change.channel, name: change.name, owner: change.owner, members: change.members}
+    end
+
+    @doc "Append event or list of events to a channel and dispatch the events"
+    def append_events(event, id) do
+      case Iris.Database.Channel.read!(id) do
+        nil when is_list(event) ->
+          %Iris.Database.Channel{id: id, changes: event}
+          |> Iris.Database.Channel.write!()
+
+        nil ->
+          %Iris.Database.Channel{id: id, changes: [event]}
+          |> Iris.Database.Channel.write!()
+
+        channel when is_list(event) ->
+          %{channel | changes: event ++ channel.changes}
+          |> Iris.Database.Channel.write!()
+
+        channel ->
+          %{channel | changes: [event | channel.changes]}
+          |> Iris.Database.Channel.write!()
+      end
+
+      Iris.EventDispatcher.send(event)
     end
   end
 end

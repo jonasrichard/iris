@@ -1,12 +1,24 @@
 defmodule Iris.CommandHandler.CreateChannel do
-  def handle(command) do
-    event = %Iris.Event.ChannelCreated{
-      id: "event_id",
-      channel_id: command.id,
-      name: command.name,
-      sender_id: command.sender_id
-    }
+  alias Iris.Aggregate.Channel
 
-    Iris.EventStore.append_event(:channel, command.id, event)
+  @doc ~S"""
+  Handle the `ChannelCreated` command
+  """
+  @spec handle(%Iris.Command.CreateChannel{}) :: term()
+  def handle(command) do
+    case Channel.load(command.id) do
+      nil ->
+        Channel.create_channel(
+          command.id,
+          command.name,
+          command.sender,
+          command.members,
+          command.first_message,
+          command.ts
+        )
+
+      _ ->
+        {:error, :already_exists}
+    end
   end
 end

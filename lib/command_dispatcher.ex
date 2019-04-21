@@ -18,10 +18,13 @@ defmodule Iris.CommandDispatcher do
     {:ok,
      %{
        Iris.Command.CreateChannel => Iris.CommandHandler.CreateChannel,
-       Iris.Command.SendMessage => Iris.CommandHandler.SendMessage
+       Iris.Command.SendMessage => Iris.CommandHandler.SendMessage,
+       Iris.Command.ReceiveMessage => Iris.CommandHandler.ReceiveMessage,
+       Iris.Command.ReadChannel => Iris.CommandHandler.ReadChannel
      }}
   end
 
+  @impl true
   def handle_call({:send, command}, _from, state) do
     module = state[command.__struct__]
     apply(module, :handle, [command])
