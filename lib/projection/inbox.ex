@@ -1,6 +1,8 @@
 defmodule Iris.Projection.Inbox do
   require Logger
 
+  # TODO implement unread message number
+
   def apply(%Iris.Event.MessageSent{} = event) do
     Logger.info("Projecting #{inspect event}")
     channel = Iris.Aggregate.Channel.load(event.channel)

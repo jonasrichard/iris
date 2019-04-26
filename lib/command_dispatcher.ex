@@ -1,6 +1,8 @@
 defmodule Iris.CommandDispatcher do
   use GenServer
 
+  require Logger
+
   def start_link(params \\ []) do
     GenServer.start_link(__MODULE__, params, name: __MODULE__)
   end
@@ -15,27 +17,19 @@ defmodule Iris.CommandDispatcher do
 
   @impl true
   def init(_) do
-    {:ok,
-     %{
-       Iris.Command.CreateChannel => Iris.CommandHandler.CreateChannel,
-       Iris.Command.SendMessage => Iris.CommandHandler.SendMessage,
-       Iris.Command.ReceiveMessage => Iris.CommandHandler.ReceiveMessage,
-       Iris.Command.ReadChannel => Iris.CommandHandler.ReadChannel
-     }}
+    {:ok, :no_state}
   end
 
   @impl true
   def handle_call({:send, command}, _from, state) do
-    module = state[command.__struct__]
+    module =
+      command.__struct__
+      |> Atom.to_string()
+      |> String.replace(".Command.", ".CommandHandler.")
+      |> String.to_atom()
+
     apply(module, :handle, [command])
+
     {:reply, :ok, state}
   end
-
-  # TODO a generic command handler needs to
-  # - read the aggregate
-  # - call a method in the aggregate
-  # - result one or more events
-  # - save them to event bus
-  #
-  # Event bus need to save the event but should react on them async.
 end
