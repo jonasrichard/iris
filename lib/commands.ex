@@ -35,4 +35,11 @@ defmodule Iris.Command do
   defmodule ReadChannel do
     defstruct [:id, :reader, :channel, :ts]
   end
+
+  # TODO add message_id to messages!
+
+  # Edit message text
+
+  # Add new user to channel
+  # Drop somebody from the channel
 end

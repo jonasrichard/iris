@@ -3,8 +3,9 @@ defmodule Iris.Event do
     defstruct [:id, :channel, :name, :owner, :members]
   end
 
+  # members is event enrichment
   defmodule MessageSent do
-    defstruct [:id, :sender, :channel, :body, :ts]
+    defstruct [:id, :sender, :channel, :body, :ts, :members]
   end
 
   defmodule MessageReceived do
@@ -13,9 +14,5 @@ defmodule Iris.Event do
 
   defmodule ChannelRead do
     defstruct [:id, :reader, :channel, :ts]
-  end
-
-  defmodule InboxMessageArrived do
-    defstruct [:recipient, :channel, :sender, :body, :message_ts]
   end
 end

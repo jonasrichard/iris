@@ -30,21 +30,22 @@ defmodule Iris.Aggregate do
           sender: owner,
           channel: id,
           body: first_message,
-          ts: ts
+          ts: ts,
+          members: members
         }
       ]
       |> append_events(id)
     end
 
     def send_message(channel, id, sender, body, ts) do
-      # we can check if the sender can send message here
       %Iris.Event.MessageSent{
         id: UUID.uuid4(),
         # message_id needed
         sender: sender,
         channel: channel.id,
         body: body,
-        ts: ts
+        ts: ts,
+        members: channel.members
       }
       |> append_events(id)
     end
