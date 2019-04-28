@@ -125,5 +125,6 @@ defmodule Iris.Aggregate.Channel do
     end
 
     Iris.EventDispatcher.send(event)
+    event
   end
 end
