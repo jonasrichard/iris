@@ -1,25 +1,17 @@
 FROM elixir:1.8.1
 
-WORKDIR /src
-RUN git clone https://github.com/jonasrichard/iris.git
-
-WORKDIR /src/iris
-RUN mix local.hex --force; \
-    mix local.rebar --force; \
-    mix deps.get; \
-    MIX_ENV=prod mix release
-
-#RUN cd /srv && git clone https://github.com/jonasrichard/iris.git
-#RUN cd /srv/iris && git pull
-#RUN cd /srv/iris && mix deps.get
-
-#COPY docker-init.sh /srv/docker-init.sh
-#COPY iris.sh /srv/iris.sh
-
-FROM alpine:latest
-
+RUN mkdir -p /srv
 WORKDIR /srv
-COPY --from=0 /src/iris/_build/prod/iris /srv/iris
 
-ENTRYPOINT /bin/bash
+RUN mix local.hex --force \
+ && mix local.rebar --force
+
+ENV MIX_ENV=prod
+
+COPY . .
+RUN mix deps.get && mix deps.compile
+
+RUN mix compile && MIX_ENV=prod mix release --no-tar --verbose --env=prod
+
+ENTRYPOINT /srv/_build/prod/rel/iris/bin/iris foreground
 

@@ -15,7 +15,15 @@ defmodule Iris.Mixfile do
   end
 
   def application do
-    [extra_applications: [:runtime_tools, :logger, :mnesia, :cowboy], mod: {Iris.App, []}]
+    [extra_applications:
+      [
+        :runtime_tools,
+        :sasl,
+        :logger,
+        :mnesia,
+        :cowboy
+      ],
+     mod: {Iris.App, []}]
   end
 
   defp deps do
