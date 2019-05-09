@@ -18,4 +18,8 @@ defmodule Iris.Debug do
     Iris.Command.SendMessage.new(sender_id, channel_id, body)
     |> Iris.CommandDispatcher.send()
   end
+
+  def std_create_channel() do
+    cmd_create_channel("test", "u1", ["u1", "u2", "u3"], "Morning gents")
+  end
 end

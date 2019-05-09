@@ -1,5 +1,8 @@
 .eunit
 deps
+log
+Mnesia.*
+docker/influx-data
 *.o
 *.beam
 *.plt

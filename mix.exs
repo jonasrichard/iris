@@ -18,9 +18,10 @@ defmodule Iris.Mixfile do
     [extra_applications:
       [
         :runtime_tools,
-        :sasl,
+        #:sasl,
         :logger,
         :mnesia,
+        :kafka_ex,
         :cowboy
       ],
      mod: {Iris.App, []}]
@@ -38,6 +39,8 @@ defmodule Iris.Mixfile do
       {:httpoison, "~> 1.5.0", only: :test},
       {:instream, "~> 0.18"},
       {:jason, "~> 1.1"},
+      {:kafka_ex, "~> 0.9.0"},
+      {:logger_file_backend, "~> 0.0"},
       {:plug, "~> 1.7"},
       {:plug_cowboy, "~> 2.0"},
       {:rexbug, ">= 1.0.0"}

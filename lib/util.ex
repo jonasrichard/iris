@@ -22,6 +22,10 @@ defmodule Iris.Util do
     |> Enum.join()
   end
 
+  def uuid_to_partition(uuid) do
+    uuid |> String.slice(0, 8) |> String.to_integer(16) |> rem(50)
+  end
+
   defp pad(i) when i > 9 do
     Integer.to_string(i)
   end

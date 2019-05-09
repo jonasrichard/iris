@@ -9,8 +9,15 @@ config :iris, Iris.Metrics,
 
 config :logger,
   level: :info,
-  backends: [:console]
+  backends: [:console, {LoggerFileBackend, :iris_log}],
+  handle_sasl_reports: true
 
-  #config :sasl,
-  #sasl_error_logger: false
+config :logger, :iris_log,
+  path: "log/iris.log",
+  level: :info
+
+config :kafka_ex,
+  brokers: [
+    {"kafka", 9092}
+  ]
 

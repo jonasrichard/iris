@@ -1,4 +1,4 @@
-version: '2'
+version: '3'
 
 services:
     zookeeper:
@@ -6,6 +6,7 @@ services:
         environment:
             ZOOKEEPER_CLIENT_PORT: 2181
             ZOOKEEPER_TICK_TIME: 2000
+
     kafka:
         image: confluentinc/cp-kafka:latest
         depends_on:
@@ -19,6 +20,7 @@ services:
             KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
             KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
             KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
     influx:
         image: influxdb
         ports:
@@ -29,17 +31,21 @@ services:
             - ./influx-data:/var/lib/influxdb
         environment:
             INFLUXDB_ADMIN_ENABLED: "true"
+
     grafana:
         image: grafana/grafana
         ports:
             - 3000:3000
+        volumes:
+            - ./grafana/:/etc/grafana/provisioning/
         environment:
             GF_SECURITY_ADMIN_PASSWORD: admin
+
     iris:
         image: jonasrichard/iris:0.0.2
         ports:
             - 8080
-        entrypoint: /srv/iris.sh
+              #entrypoint: /srv/iris.sh
         environment:
             OTHER_NODE: ${OTHER_NODE}
 

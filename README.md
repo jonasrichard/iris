@@ -1,8 +1,25 @@
 ## Iris
 
-Run with `RELX_CONFIG_PATH=$PWD/config/sys1.config VMARGS_PATH=$PWD/config/vm1.args _build/default/rel/iris/bin/iris console`.
+This is a hobby project to learn event sourcing and cqrs.
+
+### Build
+
+```
+cd docker
+docker-compose up -d
+```
+
+For development use
+
+```
+make docker-dev
+# _build/dev/rel/iris/bin/iris console
+```
 
 ### Protocol
+
+This part is obsolete. I started to develop from the protocol point of view but
+later it came up that it is better to develop the core and then the realtime part.
 
 The protocol is a subset of Slack API.
 

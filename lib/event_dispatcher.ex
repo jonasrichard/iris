@@ -7,36 +7,27 @@ defmodule Iris.EventDispatcher do
     GenServer.start_link(__MODULE__, params, name: __MODULE__)
   end
 
-  def send(events) when is_list(events) do
-    for event <- events, do: send(event)
+  def dispatch(events) when is_list(events) do
+    for {partition, event} <- events, do: send(partition, event)
   end
 
-  def send(event) do
-    GenServer.cast(__MODULE__, {:dispatch, event})
+  def dispatch(partition, event) do
+    GenServer.cast(__MODULE__, {:dispatch, partition, event})
   end
 
   def init(_) do
-    {:ok,
-     %{
-       Iris.Event.ChannelCreated => [Iris.Projection.Inbox],
-       Iris.Event.MessageSent => [Iris.Projection.Inbox],
-     }
-    }
+    {:ok, nil}
   end
 
-  def handle_cast({:dispatch, event}, state) do
-    case state[event.__struct__] do
-      nil ->
-        :ok
+  def handle_cast({:dispatch, partition, event}, state) do
+    Logger.info("Dispatch partition: #{partition} event: #{inspect event}")
+    json = event
+           |> Map.from_struct()
+           |> Map.put("__struct__", event.__struct__)
+           |> Jason.encode!()
 
-      handlers ->
-        Logger.info("Handling #{inspect event} with #{inspect handlers}")
-
-        for handler <- handlers do
-          apply(handler, :apply, [event])
-        end
-    end
-
+    # TODO check the return value
+    KafkaEx.produce("channel", partition, json)
     {:noreply, state}
   end
 end

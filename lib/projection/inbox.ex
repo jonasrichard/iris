@@ -18,6 +18,10 @@ defmodule Iris.Projection.Inbox do
     end
   end
 
+  def apply(_) do
+    :ok
+  end
+
   defp create_inbox(user, channel) do
     %Iris.Database.Inbox{
       user_channel_id: {user, channel}

@@ -124,7 +124,15 @@ defmodule Iris.Aggregate.Channel do
         |> Iris.Database.Channel.write!()
     end
 
-    Iris.EventDispatcher.send(event)
+    partition = Iris.Util.uuid_to_partition(id)
+    # TODO implement the uncommitted changes part!
+    if is_list(event) do
+      for e <- event do
+        Iris.EventDispatcher.dispatch(0, e)
+      end
+    else
+      Iris.EventDispatcher.dispatch(0, event)
+    end
     event
   end
 end
