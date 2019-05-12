@@ -10,7 +10,7 @@ defmodule Iris.MessageTest do
 
     [cmd1, cmd2] |> Iris.CommandDispatcher.send()
     # TODO how to remove the sleep here?
-    Process.sleep(100)
+    Process.sleep(1000)
 
     inbox1 = Iris.Database.Inbox.find_item!("user_1", cmd1.id)
     assert inbox1.user_channel_id == {"user_1", cmd1.id}

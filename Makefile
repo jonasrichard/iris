@@ -10,10 +10,13 @@ docker-build:
 	docker build -t ${IMG} .
 
 docker-console:
-	docker run -ti --network=docker_default ${IMG} /bin/bash
+	docker run -ti --network=docker_default elixir:1.8.1 /bin/bash
 
 docker-dev:
 	docker run -ti --rm --network=docker_default -v ${PWD}:${PWD} elixir:1.8.1 /bin/bash
+
+docker-test:
+	docker-compose -f docker/docker-compose-test.yml up -d
 
 cover:
 	MIX_ENV=test mix coveralls

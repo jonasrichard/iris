@@ -15,16 +15,16 @@ defmodule Iris.Mixfile do
   end
 
   def application do
-    [extra_applications:
-      [
+    [
+      extra_applications: [
         :runtime_tools,
-        #:sasl,
         :logger,
         :mnesia,
         :kafka_ex,
         :cowboy
       ],
-     mod: {Iris.App, []}]
+      mod: {Iris.App, []}
+    ]
   end
 
   defp deps do
@@ -43,7 +43,8 @@ defmodule Iris.Mixfile do
       {:logger_file_backend, "~> 0.0"},
       {:plug, "~> 1.7"},
       {:plug_cowboy, "~> 2.0"},
-      {:rexbug, ">= 1.0.0"}
+      {:rexbug, ">= 1.0.0"},
+      {:xandra, "~> 0.10"}
     ]
   end
 end

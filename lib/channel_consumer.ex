@@ -12,6 +12,7 @@ defmodule Iris.Consumer.Channel do
       # TODO dynamic registration
       Iris.Projection.Inbox.apply(event)
     end
+
     {:async_commit, state}
   end
 

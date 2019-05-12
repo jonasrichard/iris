@@ -133,6 +133,7 @@ defmodule Iris.Aggregate.Channel do
     else
       Iris.EventDispatcher.dispatch(0, event)
     end
+
     event
   end
 end

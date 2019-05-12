@@ -20,4 +20,3 @@ config :kafka_ex,
   brokers: [
     {"kafka", 9092}
   ]
-

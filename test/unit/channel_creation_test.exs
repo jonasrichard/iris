@@ -2,8 +2,15 @@ defmodule Iris.Test.Unit.ChannelCreation do
   use ExUnit.Case
 
   test "after create a channel members get the first message" do
-    events = Iris.Aggregate.Channel.create_channel("111", "Channel name",
-      "u1", ["u1", "u2", "u3"], "First message", Iris.Util.now_to_utc())
+    events =
+      Iris.Aggregate.Channel.create_channel(
+        "111",
+        "Channel name",
+        "u1",
+        ["u1", "u2", "u3"],
+        "First message",
+        Iris.Util.now_to_utc()
+      )
 
     assert [_create_channel, send_first_message] = events
     assert "u1" in send_first_message.members
@@ -15,8 +22,15 @@ defmodule Iris.Test.Unit.ChannelCreation do
   end
 
   test "create channel has a new channel event" do
-    events = Iris.Aggregate.Channel.create_channel("222", "Other channel",
-      "u3", ["u1", "u3"], "Welcome", Iris.Util.now_to_utc())
+    events =
+      Iris.Aggregate.Channel.create_channel(
+        "222",
+        "Other channel",
+        "u3",
+        ["u1", "u3"],
+        "Welcome",
+        Iris.Util.now_to_utc()
+      )
 
     [create_channel, _] = events
 

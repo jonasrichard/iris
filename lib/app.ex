@@ -6,7 +6,7 @@ defmodule Iris.App do
     import Supervisor.Spec
 
     Iris.Database.init()
-    #Rexbug.start("Iris.Projection.Inbox")
+    # Rexbug.start("Iris.Projection.Inbox")
 
     children = [
       Iris.EventDispatcher,
@@ -21,7 +21,10 @@ defmodule Iris.App do
       Plug.Cowboy.child_spec(
         scheme: :http,
         plug: Iris.Router,
-        options: [dispatch: dispatch()]
+        options: [
+          dispatch: dispatch(),
+          transport_options: [num_acceptors: 1]
+        ]
       )
     ]
 

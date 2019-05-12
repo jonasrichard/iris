@@ -4,11 +4,19 @@ defmodule Iris.Projection.Inbox do
   # TODO implement unread message number
 
   def apply(%Iris.Event.MessageSent{} = event) do
-    Logger.info("Projecting #{inspect event}")
+    Logger.info("Projecting #{inspect(event)}")
     channel = Iris.Aggregate.Channel.load(event.channel)
 
-    for user <- channel.members do
-      save_message_to_inbox(user, event.channel, event.sender, event.body, event.ts)
+    case channel do
+      nil ->
+        Logger.error("No aggregate for #{event.channel}")
+
+      # Logger.warning("Channels are #{inspect Iris.Debug.channels()}")
+
+      _ ->
+        for user <- channel.members do
+          save_message_to_inbox(user, event.channel, event.sender, event.body, event.ts)
+        end
     end
   end
 
