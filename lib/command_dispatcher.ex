@@ -19,8 +19,9 @@ defmodule Iris.CommandDispatcher do
   def init(_) do
     {:ok, conn} = Xandra.start_link(nodes: ["cassandra:9042"])
     # TODO put this into app.exs
-    create_db(conn)
     Process.put(:connection, conn)
+    Iris.Database.create_namespace()
+    Iris.Database.Channel.create_table()
     {:ok, :no_state}
   end
 
@@ -35,25 +36,5 @@ defmodule Iris.CommandDispatcher do
     apply(module, :handle, [command])
 
     {:reply, :ok, state}
-  end
-
-  defp create_db(conn) do
-    namespace = """
-    CREATE KEYSPACE IF NOT EXISTS iris
-      WITH replication = {'class':'SimpleStrategy','replication_factor':1};
-    """
-
-    {:ok, _} = Xandra.execute(conn, namespace)
-
-    channel = """
-    CREATE TABLE IF NOT EXISTS iris.channel (
-      id varchar,
-      version int,
-      change varchar,
-      primary key (id, version)
-    );
-    """
-
-    {:ok, _} = Xandra.execute(conn, channel)
   end
 end

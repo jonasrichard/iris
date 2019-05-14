@@ -1,5 +1,5 @@
 defmodule Iris.Aggregate.Channel do
-  defstruct [:id, :name, :owner, :members]
+  defstruct [:id, :name, :owner, :members, :last_version]
 
   @doc "Load and reconstruct aggregate by applying changes"
   def load(id) do
@@ -85,7 +85,11 @@ defmodule Iris.Aggregate.Channel do
   end
 
   defp to_channel(db_item) do
+    #last_version = db_item
+    #               |> Enum.map(&(&1.version))
+    #               |> Enum.max()
     Enum.reduce(db_item.changes, %Iris.Aggregate.Channel{id: db_item.id}, &apply_change/2)
+    #|> Map.put(:last_version, last_version)
   end
 
   defp apply_change(change = %Iris.Event.UserInvited{}, acc) do
@@ -105,35 +109,18 @@ defmodule Iris.Aggregate.Channel do
   end
 
   @doc "Append event or list of events to a channel and dispatch the events"
-  def append_events(event, id) do
-    case Iris.Database.Channel.read!(id) do
-      nil when is_list(event) ->
-        %Iris.Database.Channel{id: id, changes: event}
-        |> Iris.Database.Channel.write!()
-
-      nil ->
-        %Iris.Database.Channel{id: id, changes: [event]}
-        |> Iris.Database.Channel.write!()
-
-      channel when is_list(event) ->
-        %{channel | changes: event ++ channel.changes}
-        |> Iris.Database.Channel.write!()
-
-      channel ->
-        %{channel | changes: [event | channel.changes]}
-        |> Iris.Database.Channel.write!()
+  defp append_events(events, id) do
+    for event <- events do
+      append_event(event, id, 0)
     end
-
-    partition = Iris.Util.uuid_to_partition(id)
-    # TODO implement the uncommitted changes part!
-    if is_list(event) do
-      for e <- event do
-        Iris.EventDispatcher.dispatch(0, e)
-      end
-    else
-      Iris.EventDispatcher.dispatch(0, event)
-    end
-
-    event
+    events
   end
+
+  defp append_event(event, id, version) do
+    Iris.Database.Channel.write(id, version, event)
+    _partition = Iris.Util.uuid_to_partition(id)
+    Iris.EventDispatcher.dispatch(0, event)
+  end
+
+    # TODO implement the uncommitted changes part!
 end

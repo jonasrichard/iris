@@ -31,19 +31,19 @@ defmodule Iris.Projection.Inbox do
   end
 
   defp create_inbox(user, channel) do
-    %Iris.Database.Inbox{
+    %Iris.Mnesia.Inbox{
       user_channel_id: {user, channel}
     }
-    |> Iris.Database.Inbox.write!()
+    |> Iris.Mnesia.Inbox.write!()
   end
 
   defp save_message_to_inbox(user, channel, sender, body, ts) do
-    %Iris.Database.Inbox{
+    %Iris.Mnesia.Inbox{
       user_channel_id: {user, channel},
       last_user_id: sender,
       last_message: body,
       last_ts: ts
     }
-    |> Iris.Database.Inbox.write!()
+    |> Iris.Mnesia.Inbox.write!()
   end
 end

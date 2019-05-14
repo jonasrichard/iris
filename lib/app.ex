@@ -5,8 +5,10 @@ defmodule Iris.App do
   def start(_type, _args) do
     import Supervisor.Spec
 
-    Iris.Database.init()
-    # Rexbug.start("Iris.Projection.Inbox")
+    Iris.Mnesia.init()
+    #Rexbug.start("KafkaEx.NetworkClient.create_socket/4 :: return;stack")
+    Rexbug.start("KafkaEx.ConsumerGroup.init/1 :: stack")
+    #RexBug.start("KafkaEx.Server0P10AndLater.init/1")
 
     children = [
       Iris.EventDispatcher,

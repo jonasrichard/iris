@@ -1,6 +1,6 @@
 use Amnesia
 
-defdatabase Iris.Database do
+defdatabase Iris.Mnesia do
   require Logger
 
   # Event store for channel aggregate
@@ -31,10 +31,10 @@ defdatabase Iris.Database do
       nil ->
         Logger.info("Storing schema on disk")
         Amnesia.Table.copying(:schema, node(), :disk)
-        Iris.Database.Channel.create()
-        Iris.Database.Channel.copying(node(), :disk)
-        Iris.Database.Inbox.create()
-        Iris.Database.Inbox.copying(node(), :disk)
+        Iris.Mnesia.Channel.create()
+        Iris.Mnesia.Channel.copying(node(), :disk)
+        Iris.Mnesia.Inbox.create()
+        Iris.Mnesia.Inbox.copying(node(), :disk)
 
       "NO" ->
         :ok
