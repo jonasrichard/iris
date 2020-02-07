@@ -2,18 +2,11 @@
 
 This is a hobby project to learn event sourcing and cqrs.
 
-### Build
+### Build for development
 
 ```
-cd docker
-docker-compose up -d
-```
-
-For development use
-
-```
-make docker-dev
-# _build/dev/rel/iris/bin/iris console
+docker-compose -f docker/docker-compose-test.yml up -d
+iex -S mix
 ```
 
 ### Protocol

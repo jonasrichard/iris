@@ -1,4 +1,4 @@
-defmodule Iris.Database do
+defmodule Iris.Cassandra do
 
   def create_namespace() do
     namespace = """
@@ -34,8 +34,9 @@ defmodule Iris.Database do
     end
 
     def write!(id, version, change) do
+      change_json = Iris.Util.struct_to_json(change)
       cmd =
-        "INSERT INTO iris.channel (id, version, change) VALUES ('#{id}', #{version}, '#{change}')"
+        "INSERT INTO iris.channel (id, version, change) VALUES ('#{id}', #{version}, '#{change_json}')"
 
       {:ok, result} = Xandra.execute(Process.get(:connection), cmd)
       Logger.info("channel write: #{inspect(result)}")

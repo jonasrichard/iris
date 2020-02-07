@@ -26,9 +26,16 @@ defmodule Iris.Util do
     uuid |> String.slice(0, 8) |> String.to_integer(16) |> rem(50)
   end
 
+  def struct_to_json(struct) do
+    struct
+    |> Map.from_struct
+    |> Map.put(:_struct_, struct.__struct__)
+    |> Jason.encode!()
+  end
+
   def json_to_struct(json) do
     map = Jason.decode!(json, keys: :atoms)
-    type = map.__struct__ |> String.to_atom()
+    type = map._struct_ |> String.to_atom()
     Map.put(map, :__struct__, type)
   end
 

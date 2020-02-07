@@ -1,9 +1,9 @@
 defmodule Iris.ClientTest do
   use ExUnit.Case
 
-  alias Iris.Client, as: Client
-  alias Iris.Message, as: Message
-  alias Iris.ProcessMock, as: ProcessMock
+  #  alias Iris.Client, as: Client
+  #  alias Iris.Message, as: Message
+  #  alias Iris.ProcessMock, as: ProcessMock
 
   test "routed messages sent to web socket" do
     # {:ok, w1} = ProcessMock.start_link()

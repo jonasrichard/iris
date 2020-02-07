@@ -22,11 +22,7 @@ defmodule Iris.EventDispatcher do
   def handle_cast({:dispatch, partition, event}, state) do
     Logger.info("Dispatch partition: #{partition} event: #{inspect(event)}")
 
-    json =
-      event
-      |> Map.from_struct()
-      |> Map.put("__struct__", event.__struct__)
-      |> Jason.encode!()
+    json = Iris.Util.struct_to_json(event)
 
     # TODO check the return value
     KafkaEx.produce("channel", partition, json)

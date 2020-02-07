@@ -2,9 +2,13 @@ defmodule Iris.Aggregate.Channel do
   defstruct [:id, :name, :owner, :members, :last_version]
 
   @doc "Load and reconstruct aggregate by applying changes"
+  @spec load(String.t) :: %Iris.Aggregate.Channel{} | nil
   def load(id) do
-    case Iris.Database.Channel.read!(id) do
+    case Iris.Database.Channel.read(id) do
       nil ->
+        nil
+
+      [] ->
         nil
 
       item ->
@@ -117,7 +121,7 @@ defmodule Iris.Aggregate.Channel do
   end
 
   defp append_event(event, id, version) do
-    Iris.Database.Channel.write(id, version, event)
+    Iris.Database.Channel.write!(id, version, event)
     _partition = Iris.Util.uuid_to_partition(id)
     Iris.EventDispatcher.dispatch(0, event)
   end

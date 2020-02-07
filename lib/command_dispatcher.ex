@@ -17,11 +17,10 @@ defmodule Iris.CommandDispatcher do
 
   @impl true
   def init(_) do
-    {:ok, conn} = Xandra.start_link(nodes: ["cassandra:9042"])
+    {:ok, conn} = Xandra.start_link(nodes: [Application.fetch_env!(:iris, :database)[:host]])
     # TODO put this into app.exs
     Process.put(:connection, conn)
-    Iris.Database.create_namespace()
-    Iris.Database.Channel.create_table()
+    Iris.Database.init()
     {:ok, :no_state}
   end
 
@@ -32,6 +31,8 @@ defmodule Iris.CommandDispatcher do
       |> Atom.to_string()
       |> String.replace(".Command.", ".CommandHandler.")
       |> String.to_atom()
+
+    Logger.info("Calling #{module} :handle with #{inspect command}")
 
     apply(module, :handle, [command])
 

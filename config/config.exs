@@ -7,6 +7,8 @@ config :iris, Iris.Metrics,
   scheme: "http",
   pool: [max_overflow: 10, size: 5]
 
+config :iris, database_type: :cassandra
+
 config :logger,
   level: :info,
   backends: [:console, {LoggerFileBackend, :iris_log}],
@@ -16,7 +18,4 @@ config :logger, :iris_log,
   path: "log/iris.log",
   level: :info
 
-config :kafka_ex,
-  brokers: [
-    {"kafka", 9092}
-  ]
+import_config "#{Mix.env()}.exs"
