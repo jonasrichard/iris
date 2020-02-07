@@ -113,11 +113,15 @@ defmodule Iris.Aggregate.Channel do
   end
 
   @doc "Append event or list of events to a channel and dispatch the events"
-  defp append_events(events, id) do
+  defp append_events(events, id) when is_list(events) do
     for event <- events do
       append_event(event, id, 0)
     end
     events
+  end
+  defp append_events(event, id) do
+    append_event(event, id, 0)
+    event
   end
 
   defp append_event(event, id, version) do

@@ -25,4 +25,7 @@ defmodule Iris.Database do
     end
   end
 
+  defmodule Inbox do
+  end
+
 end

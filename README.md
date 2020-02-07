@@ -1,6 +1,7 @@
 ## Iris
 
-This is a hobby project to learn event sourcing and cqrs.
+This is a hobby project to learn event sourcing and cqrs. [Iris](https://en.wikipedia.org/wiki/Iris_(mythology))
+in the Greek mythology is the messenger of the gods.
 
 ### Build for development
 
