@@ -1,4 +1,23 @@
 defmodule Iris.Cassandra do
+  use GenServer
+
+  def start_link(_opts) do
+    GenServer.start_link(__MODULE__, nil, name: __MODULE__)
+  end
+
+  def query(query) do
+    GenServer.call(__MODULE__, {:query, query})
+  end
+
+  def init(_) do
+    {:ok, conn} = Xandra.start_link(nodes: [Application.fetch_env!(:iris, :database)[:host]])
+    {:ok, %{:connection => conn}}
+  end
+
+  def handle_call({:query, query}, _from, state) do
+    result = Xandra.execute(state[:connection], query)
+    {:reply, result, state}
+  end
 
   def create_namespace() do
     namespace = """
@@ -6,7 +25,7 @@ defmodule Iris.Cassandra do
       WITH replication = {'class':'SimpleStrategy','replication_factor':1};
     """
 
-    {:ok, _} = Xandra.execute(Process.get(:connection), namespace)
+    {:ok, _} = query(namespace)
   end
 
   defmodule Channel do
@@ -22,12 +41,12 @@ defmodule Iris.Cassandra do
       );
       """
 
-      {:ok, _} = Xandra.execute(Process.get(:connection), channel)
+      {:ok, _} = Iris.Cassandra.query(channel)
     end
 
     def read!(id) do
       cmd = "SELECT version, change FROM iris.channel WHERE id = '#{id}'"
-      {:ok, result} = Xandra.execute(Process.get(:connection), cmd)
+      {:ok, result} = Iris.Cassandra.query(cmd)
       Enum.map(result, fn %{"version" => version, "change" => change} ->
         {version, change}
       end)
@@ -38,8 +57,42 @@ defmodule Iris.Cassandra do
       cmd =
         "INSERT INTO iris.channel (id, version, change) VALUES ('#{id}', #{version}, '#{change_json}')"
 
-      {:ok, result} = Xandra.execute(Process.get(:connection), cmd)
+      {:ok, result} = Iris.Cassandra.query(cmd)
       Logger.info("channel write: #{inspect(result)}")
+    end
+  end
+
+  defmodule Inbox do
+    def create_table() do
+      inbox = """
+      CREATE TABLE IF NOT EXISTS iris.inbox (
+        user_id varchar,
+        channel_id varchar,
+        last_user_id varchar,
+        last_message varchar,
+        last_ts timestamp,
+        primary key (user_id, channel_id)
+      );
+      """
+      {:ok, _} = Iris.Cassandra.query(inbox)
+    end
+
+  defp null_safe(param) do
+    case param do
+      nil ->
+        "'NULL'"
+      _ ->
+        "'#{param}'"
+    end
+  end
+
+    def write!(user_id, channel_id, last_user_id, last_message, last_ts) do
+      cmd = """
+        INSERT INTO iris.inbox (user_id, channel_id, last_user_id, last_message, last_ts) VALUES
+          ('#{user_id}', '#{channel_id}', #{null_safe(last_user_id)}, #{null_safe(last_message)},
+           #{null_safe(last_ts)})
+      """
+      {:ok, _} = Iris.Cassandra.query(cmd)
     end
   end
 end

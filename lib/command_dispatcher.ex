@@ -17,9 +17,7 @@ defmodule Iris.CommandDispatcher do
 
   @impl true
   def init(_) do
-    {:ok, conn} = Xandra.start_link(nodes: [Application.fetch_env!(:iris, :database)[:host]])
-    # TODO put this into app.exs
-    Process.put(:connection, conn)
+    # TODO move this to the app start part
     Iris.Database.init()
     {:ok, :no_state}
   end

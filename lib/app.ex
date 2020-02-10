@@ -5,12 +5,24 @@ defmodule Iris.App do
   def start(_type, _args) do
     import Supervisor.Spec
 
-    Iris.Mnesia.init()
+    case Application.fetch_env!(:iris, :database_type) do
+      :mnesia ->
+        Iris.Mnesia.init()
+      _ ->
+        nil
+    end
+
     #Rexbug.start("KafkaEx.NetworkClient.create_socket/4 :: return;stack")
     Rexbug.start("KafkaEx.ConsumerGroup.init/1 :: stack")
     #RexBug.start("KafkaEx.Server0P10AndLater.init/1")
 
-    children = [
+    children =
+      case Application.fetch_env!(:iris, :database_type) do
+        :cassandra ->
+          [Iris.Cassandra]
+        _ ->
+          []
+      end ++ [
       Iris.EventDispatcher,
       Iris.CommandDispatcher,
       {DynamicSupervisor, strategy: :one_for_one, name: Iris.Session.Supervisor},
