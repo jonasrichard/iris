@@ -32,6 +32,7 @@ defmodule Iris.Mixfile do
       {:amnesia, github: "meh/amnesia"},
       {:cowboy, "~> 2.6"},
       {:credo, "~> 0.7", only: [:test, :dev]},
+      {:dialyxir, ">= 0.0.0", github: "jeremyjh/dialyxir", only: [:dev]},
       {:distillery, "~> 2.0"},
       {:elixir_uuid, "~> 1.2"},
       {:excoveralls, "~> 0.10", only: :test},

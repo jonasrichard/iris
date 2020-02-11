@@ -36,7 +36,7 @@ defmodule Iris.Util do
   def json_to_struct(json) do
     map = Jason.decode!(json, keys: :atoms)
     type = map._struct_ |> String.to_atom()
-    Map.put(map, :__struct__, type)
+    Map.put(map, :__struct__, type) |> Map.delete(:_struct_)
   end
 
   defp pad(i) when i > 9 do

@@ -29,7 +29,16 @@ defmodule Iris.Database do
   defmodule Inbox do
     defstruct [:user_id, :channel_id, :last_user_id, :last_message, :last_ts]
 
-    def find_item!(user_id, channel_id) do
+    def get_inbox(user_id, channel_id) do
+      Iris.Cassandra.Inbox.read!(user_id, channel_id)
+    end
+
+    def get_inbox_by_user_id(user_id) do
+      Iris.Cassandra.Inbox.read!(user_id)
+    end
+
+    def write!(user_id, channel_id) do
+      Iris.Cassandra.Inbox.write!(user_id, channel_id)
     end
 
     def write!(user_id, channel_id, last_user_id, last_message, last_ts) do

@@ -48,7 +48,7 @@ defmodule Iris.Cassandra do
       cmd = "SELECT version, change FROM iris.channel WHERE id = '#{id}'"
       {:ok, result} = Iris.Cassandra.query(cmd)
       Enum.map(result, fn %{"version" => version, "change" => change} ->
-        {version, change}
+        {version, Iris.Util.json_to_struct(change)}
       end)
     end
 
@@ -63,6 +63,7 @@ defmodule Iris.Cassandra do
   end
 
   defmodule Inbox do
+    # TODO find out how to order by last_ts desc (it is not a partition key)
     def create_table() do
       inbox = """
       CREATE TABLE IF NOT EXISTS iris.inbox (
@@ -77,22 +78,52 @@ defmodule Iris.Cassandra do
       {:ok, _} = Iris.Cassandra.query(inbox)
     end
 
-  defp null_safe(param) do
-    case param do
-      nil ->
-        "'NULL'"
-      _ ->
-        "'#{param}'"
+    def read!(user_id) do
+      cmd = """
+      SELECT user_id, channel_id, last_user_id, last_message, last_ts
+      FROM iris.inbox
+      WHERE user_id = '#{user_id}'
+      """
+      {:ok, result} = Iris.Cassandra.query(cmd)
+      Enum.map(result, &row_to_struct/1)
     end
-  end
+
+    def read!(user_id, channel_id) do
+      cmd = """
+      SELECT user_id, channel_id, last_user_id, last_message, last_ts
+      FROM iris.inbox
+      WHERE user_id = '#{user_id}' AND channel_id = '#{channel_id}'
+      """
+      {:ok, result} = Iris.Cassandra.query(cmd)
+      case Enum.map(result, &row_to_struct/1) do
+        [item] ->
+          item
+        [] ->
+          nil
+      end
+    end
+
+    def write!(user_id, channel_id) do
+      cmd = "INSERT INTO iris.inbox (user_id, channel_id) VALUES ('#{user_id}', '#{channel_id}')"
+      {:ok, _} = Iris.Cassandra.query(cmd)
+    end
 
     def write!(user_id, channel_id, last_user_id, last_message, last_ts) do
       cmd = """
         INSERT INTO iris.inbox (user_id, channel_id, last_user_id, last_message, last_ts) VALUES
-          ('#{user_id}', '#{channel_id}', #{null_safe(last_user_id)}, #{null_safe(last_message)},
-           #{null_safe(last_ts)})
+          ('#{user_id}', '#{channel_id}', #{last_user_id}, #{last_message}, #{last_ts})
       """
       {:ok, _} = Iris.Cassandra.query(cmd)
+    end
+
+    def row_to_struct(map) do
+      %Iris.Database.Inbox{
+        user_id: map["user_id"],
+        channel_id: map["channel_id"],
+        last_user_id: map["last_user_id"],
+        last_message: map["last_message"],
+        last_ts: map["last_ts"]
+      }
     end
   end
 end

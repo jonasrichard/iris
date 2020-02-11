@@ -13,7 +13,7 @@ defmodule Iris.App do
     end
 
     #Rexbug.start("KafkaEx.NetworkClient.create_socket/4 :: return;stack")
-    Rexbug.start("KafkaEx.ConsumerGroup.init/1 :: stack")
+    Rexbug.start("Iris.Aggregate.Channel.to_channel/1", msgs: 100)
     #RexBug.start("KafkaEx.Server0P10AndLater.init/1")
 
     children =
