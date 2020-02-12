@@ -11,6 +11,7 @@ defmodule Iris.Test.Acceptance.ChannelCreation do
 
     # check both inboxes
     channel_id = create_channel.id
+    Process.sleep(1000)
     u1_inbox = Iris.Database.Inbox.get_inbox("u1", channel_id)
 
     assert u1_inbox.last_user_id == "u1"

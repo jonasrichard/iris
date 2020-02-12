@@ -14,6 +14,10 @@ defmodule Iris.Fixture do
     }
   end
 
+  def now_to_utc() do
+    now_to_utc(:erlang.timestamp())
+  end
+
   def now_to_utc(now) do
     {{year, month, day}, {hour, minute, second}} = :calendar.now_to_datetime(now)
 
