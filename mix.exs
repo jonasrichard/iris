@@ -6,6 +6,7 @@ defmodule Iris.Mixfile do
       app: :iris,
       version: "0.2.0",
       elixir: "~> 1.7",
+      elixirc_paths: elixirc_paths(Mix.env),
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       test_coverage: [tool: ExCoveralls],
@@ -37,6 +38,7 @@ defmodule Iris.Mixfile do
       {:elixir_uuid, "~> 1.2"},
       {:excoveralls, "~> 0.10", only: :test},
       {:exquisite, github: "meh/exquisite", override: true},
+      {:faker, only: :test},
       {:httpoison, "~> 1.5.0", only: :test},
       {:instream, "~> 0.18"},
       {:jason, "~> 1.1"},
@@ -48,4 +50,7 @@ defmodule Iris.Mixfile do
       {:xandra, "~> 0.10"}
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/helpers"]
+  defp elixirc_paths(_), do: ["lib"]
 end

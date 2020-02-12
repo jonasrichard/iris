@@ -1,4 +1,4 @@
-defmodule Iris.Test.Unit.ChannelCreation do
+defmodule Iris.Test.Unit.Aggregate.ChannelCreation do
   use ExUnit.Case
 
   test "after create a channel members get the first message" do
