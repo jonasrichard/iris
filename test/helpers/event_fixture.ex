@@ -19,7 +19,7 @@ defmodule Iris.Fixture.Event do
       sender: opts[:sender] || Faker.Name.En.name(),
       channel: opts[:channel] || id(),
       body: opts[:body] || Faker.Lorem.Shakespeare.hamlet(),
-      ts: opts[:ts] || Iris.Fixture,
+      ts: opts[:ts] || Iris.Fixture.now_to_utc(),
       members: opts[:members]
     }
   end

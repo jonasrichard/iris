@@ -5,19 +5,9 @@ defmodule Iris.Projection.Inbox do
 
   def apply(%Iris.Event.MessageSent{} = event) do
     Logger.info("Projecting #{inspect(event)}")
-    # TODO this is incorrect, from projection we shouldn't read the current aggregate
-    channel = Iris.Aggregate.Channel.load(event.channel)
 
-    Logger.warn("Channel is #{inspect channel}")
-
-    case channel do
-      nil ->
-        Logger.error("No aggregate for #{event.channel}")
-
-      _ ->
-        for user <- channel.members do
-          save_message_to_inbox(user, event.channel, event.sender, event.body, event.ts)
-        end
+    for user <- event.members do
+      save_message_to_inbox(user, event.channel, event.sender, event.body, event.ts)
     end
   end
 

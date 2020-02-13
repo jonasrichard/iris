@@ -63,6 +63,8 @@ defmodule Iris.Cassandra do
   end
 
   defmodule Inbox do
+    require Logger
+
     # TODO find out how to order by last_ts desc (it is not a partition key)
     def create_table() do
       inbox = """
@@ -111,8 +113,9 @@ defmodule Iris.Cassandra do
     def write!(user_id, channel_id, last_user_id, last_message, last_ts) do
       cmd = """
         INSERT INTO iris.inbox (user_id, channel_id, last_user_id, last_message, last_ts) VALUES
-          ('#{user_id}', '#{channel_id}', #{last_user_id}, #{last_message}, #{last_ts})
+          ('#{user_id}', '#{channel_id}', '#{last_user_id}', '#{last_message}', '#{last_ts}')
       """
+      Logger.info("#{cmd}")
       {:ok, _} = Iris.Cassandra.query(cmd)
     end
 
