@@ -8,39 +8,42 @@ defmodule Iris.App do
     case Application.fetch_env!(:iris, :database_type) do
       :mnesia ->
         Iris.Mnesia.init()
+
       _ ->
         nil
     end
 
-    #Rexbug.start("KafkaEx.NetworkClient.create_socket/4 :: return;stack")
-    #Rexbug.start("Iris.Aggregate.Channel.to_channel/1", msgs: 100)
-    #RexBug.start("Iris.Fixture.retry/2")
+    # Rexbug.start("KafkaEx.NetworkClient.create_socket/4 :: return;stack")
+    # Rexbug.start("Iris.Aggregate.Channel.to_channel/1", msgs: 100)
+    # RexBug.start("Iris.Fixture.retry/2")
 
     children =
       case Application.fetch_env!(:iris, :database_type) do
         :cassandra ->
           [Iris.Cassandra]
+
         _ ->
           []
-      end ++ [
-      Iris.EventDispatcher,
-      Iris.CommandDispatcher,
-      {DynamicSupervisor, strategy: :one_for_one, name: Iris.Session.Supervisor},
-      supervisor(
-        KafkaEx.ConsumerGroup,
-        [Iris.Consumer.Channel, "channel-group", ["channel"], []]
-      ),
-      Iris.Metrics,
-      Iris.Metrics.Reporter,
-      Plug.Cowboy.child_spec(
-        scheme: :http,
-        plug: Iris.Router,
-        options: [
-          dispatch: dispatch(),
-          transport_options: [num_acceptors: 1]
+      end ++
+        [
+          Iris.EventDispatcher,
+          Iris.CommandDispatcher,
+          {DynamicSupervisor, strategy: :one_for_one, name: Iris.Session.Supervisor},
+          supervisor(
+            KafkaEx.ConsumerGroup,
+            [Iris.Consumer.Channel, "channel-group", ["channel"], []]
+          ),
+          Iris.Metrics,
+          Iris.Metrics.Reporter,
+          Plug.Cowboy.child_spec(
+            scheme: :http,
+            plug: Iris.Router,
+            options: [
+              dispatch: dispatch(),
+              transport_options: [num_acceptors: 1]
+            ]
+          )
         ]
-      )
-    ]
 
     opts = [strategy: :one_for_one, name: Iris.Main.Supervisor]
     Supervisor.start_link(children, opts)

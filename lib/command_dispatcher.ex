@@ -30,7 +30,7 @@ defmodule Iris.CommandDispatcher do
       |> String.replace(".Command.", ".CommandHandler.")
       |> String.to_atom()
 
-    Logger.info("Calling #{module} :handle with #{inspect command}")
+    Logger.info("Calling #{module} :handle with #{inspect(command)}")
 
     apply(module, :handle, [command])
 

@@ -10,12 +10,12 @@ defmodule Iris.Consumer.Channel do
       event = Iris.Util.json_to_struct(message)
       Logger.info(fn -> "message: " <> inspect(event) end)
       # TODO dynamic registration
-      #try do
-        Iris.Projection.Inbox.apply(event)
-      #catch
+      # try do
+      Iris.Projection.Inbox.apply(event)
+      # catch
       #  type, reason ->
       #    Logger.error("#{type} #{inspect reason}")
-      #end
+      # end
     end
 
     {:async_commit, state}

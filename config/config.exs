@@ -14,8 +14,7 @@ config :logger,
   backends: [:console, {LoggerFileBackend, :iris_log}],
   handle_sasl_reports: true
 
-config :logger, :console,
-  metadata: [:module, :function, :line]
+config :logger, :console, metadata: [:module, :function, :line]
 
 config :logger, :iris_log,
   format: "\n$date $time $metadata[$level] $levelpad$message\n",

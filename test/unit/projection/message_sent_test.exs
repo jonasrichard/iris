@@ -4,7 +4,13 @@ defmodule Iris.Test.Unit.Projection.MessageSent do
   test "message sent should update the inboxes" do
     event1 = Iris.Fixture.Event.channel_created_event()
     sender = List.last(event1.members)
-    event2 = Iris.Fixture.Event.message_sent_event(sender: sender, channel: event1.channel, members: event1.members)
+
+    event2 =
+      Iris.Fixture.Event.message_sent_event(
+        sender: sender,
+        channel: event1.channel,
+        members: event1.members
+      )
 
     [event1, event2]
     |> Enum.each(&Iris.Projection.Inbox.apply/1)

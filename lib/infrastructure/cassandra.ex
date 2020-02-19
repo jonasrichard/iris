@@ -47,6 +47,7 @@ defmodule Iris.Cassandra do
     def read!(id) do
       cmd = "SELECT version, change FROM iris.channel WHERE id = '#{id}'"
       {:ok, result} = Iris.Cassandra.query(cmd)
+
       Enum.map(result, fn %{"version" => version, "change" => change} ->
         {version, Iris.Util.json_to_struct(change)}
       end)
@@ -54,11 +55,12 @@ defmodule Iris.Cassandra do
 
     def write!(id, version, change) do
       change_json = Iris.Util.struct_to_json(change)
+
       cmd =
         "INSERT INTO iris.channel (id, version, change) VALUES ('#{id}', #{version}, '#{change_json}')"
 
       {:ok, result} = Iris.Cassandra.query(cmd)
-      #Logger.info("channel write: #{inspect(result)}")
+      # Logger.info("channel write: #{inspect(result)}")
     end
   end
 
@@ -77,6 +79,7 @@ defmodule Iris.Cassandra do
         primary key (user_id, channel_id)
       );
       """
+
       {:ok, _} = Iris.Cassandra.query(inbox)
     end
 
@@ -86,6 +89,7 @@ defmodule Iris.Cassandra do
       FROM iris.inbox
       WHERE user_id = '#{user_id}'
       """
+
       {:ok, result} = Iris.Cassandra.query(cmd)
       Enum.map(result, &row_to_struct/1)
     end
@@ -96,10 +100,13 @@ defmodule Iris.Cassandra do
       FROM iris.inbox
       WHERE user_id = '#{user_id}' AND channel_id = '#{channel_id}'
       """
+
       {:ok, result} = Iris.Cassandra.query(cmd)
+
       case Enum.map(result, &row_to_struct/1) do
         [item] ->
           item
+
         [] ->
           nil
       end
@@ -115,7 +122,8 @@ defmodule Iris.Cassandra do
         INSERT INTO iris.inbox (user_id, channel_id, last_user_id, last_message, last_ts) VALUES
           ('#{user_id}', '#{channel_id}', '#{last_user_id}', '#{last_message}', '#{last_ts}')
       """
-      #Logger.info("#{cmd}")
+
+      # Logger.info("#{cmd}")
       {:ok, _} = Iris.Cassandra.query(cmd)
     end
 

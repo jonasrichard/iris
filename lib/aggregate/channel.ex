@@ -4,7 +4,7 @@ defmodule Iris.Aggregate.Channel do
   require Logger
 
   @doc "Load and reconstruct aggregate by applying changes"
-  @spec load(String.t) :: %Iris.Aggregate.Channel{} | nil
+  @spec load(String.t()) :: %Iris.Aggregate.Channel{} | nil
   def load(id) do
     case Iris.Database.Channel.read(id) do
       nil ->
@@ -19,7 +19,8 @@ defmodule Iris.Aggregate.Channel do
     end
   end
 
-  @spec create_channel(String.t, String.t, String.t, list(), String.t, String.t) :: %Iris.Aggregate.Channel{}
+  @spec create_channel(String.t(), String.t(), String.t(), list(), String.t(), String.t()) ::
+          %Iris.Aggregate.Channel{}
   def create_channel(id, name, owner, members, first_message, ts) do
     [
       %Iris.Event.ChannelCreated{
@@ -93,11 +94,14 @@ defmodule Iris.Aggregate.Channel do
   end
 
   defp to_channel(db_item) do
-    last_version = db_item.changes
-                   |> Enum.map(&(elem(&1, 0)))
-                   |> Enum.max()
+    last_version =
+      db_item.changes
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.max()
+
     db_item.changes
-    |> Enum.reduce(%Iris.Aggregate.Channel{id: db_item.id},
+    |> Enum.reduce(
+      %Iris.Aggregate.Channel{id: db_item.id},
       fn {version, event}, acc ->
         apply_change(event, acc)
         |> update_version(version)
@@ -126,6 +130,7 @@ defmodule Iris.Aggregate.Channel do
     cond do
       channel.last_version < version ->
         %{channel | version: version}
+
       true ->
         channel
     end
@@ -134,6 +139,7 @@ defmodule Iris.Aggregate.Channel do
   defp append_events([], channel) do
     channel
   end
+
   defp append_events([event | rest], channel) do
     append_events(rest, append_event(event, channel))
   end

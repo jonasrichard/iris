@@ -1,7 +1,6 @@
 use Mix.Config
 
-config :iris, :database,
-  host: "localhost:9042"
+config :iris, :database, host: "localhost:9042"
 
 config :kafka_ex,
   brokers: [

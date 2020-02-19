@@ -1,5 +1,4 @@
 defmodule Iris.Database do
-
   def init() do
     # Cassandra only
     Iris.Cassandra.create_namespace()
@@ -10,17 +9,18 @@ defmodule Iris.Database do
   defmodule Channel do
     defstruct [:id, :changes]
 
-    @spec read(String.t) :: %Iris.Database.Channel{} | nil
+    @spec read(String.t()) :: %Iris.Database.Channel{} | nil
     def read(id) do
       case Iris.Cassandra.Channel.read!(id) do
         [] ->
           nil
+
         changes ->
           %Iris.Database.Channel{id: id, changes: changes}
       end
     end
 
-    @spec write!(String.t, number, struct) :: any
+    @spec write!(String.t(), number, struct) :: any
     def write!(id, version, change) do
       Iris.Cassandra.Channel.write!(id, version, change)
     end
@@ -45,5 +45,4 @@ defmodule Iris.Database do
       Iris.Cassandra.Inbox.write!(user_id, channel_id, last_user_id, last_message, last_ts)
     end
   end
-
 end

@@ -4,7 +4,7 @@ defmodule Iris.CommandHandler.SendMessage do
   def handle(command) do
     channel = Iris.Aggregate.Channel.load(command.channel)
 
-    Logger.warn("#{inspect channel}")
+    Logger.warn("#{inspect(channel)}")
 
     channel
     |> Iris.Aggregate.Channel.send_message(

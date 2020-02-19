@@ -3,6 +3,7 @@ defmodule Iris.Fixture.Event do
 
   def channel_created_event(opts \\ []) do
     owner = Faker.Name.En.name()
+
     %Iris.Event.ChannelCreated{
       id: opts[:id] || id(),
       channel: opts[:channel] || id(),

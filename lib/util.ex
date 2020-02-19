@@ -28,7 +28,7 @@ defmodule Iris.Util do
 
   def struct_to_json(struct) do
     struct
-    |> Map.from_struct
+    |> Map.from_struct()
     |> Map.put(:_struct_, struct.__struct__)
     |> Jason.encode!()
   end

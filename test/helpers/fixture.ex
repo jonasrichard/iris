@@ -64,13 +64,15 @@ defmodule Iris.Fixture do
   end
 
   def retry(fun, 0) do
-    raise "Timeout calling evaluating: #{inspect fun}"
+    raise "Timeout calling evaluating: #{inspect(fun)}"
   end
+
   def retry(fun, num) do
     case fun.() do
       nil ->
         Process.sleep(1000)
         retry(fun, num - 1)
+
       result ->
         result
     end
