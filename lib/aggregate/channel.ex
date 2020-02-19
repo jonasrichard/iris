@@ -14,7 +14,6 @@ defmodule Iris.Aggregate.Channel do
         nil
 
       item ->
-        Logger.info("Channel changes: #{inspect item}")
         item
         |> to_channel()
     end
@@ -32,6 +31,7 @@ defmodule Iris.Aggregate.Channel do
       },
       %Iris.Event.MessageSent{
         id: UUID.uuid4(),
+        message_id: UUID.uuid4(),
         sender: owner,
         channel: id,
         body: first_message,
@@ -44,7 +44,7 @@ defmodule Iris.Aggregate.Channel do
 
   def send_message(channel, id, message_id, sender, body, ts) do
     %Iris.Event.MessageSent{
-      id: UUID.uuid4(),
+      id: id,
       message_id: message_id,
       sender: sender,
       channel: channel.id,
@@ -96,8 +96,13 @@ defmodule Iris.Aggregate.Channel do
     last_version = db_item.changes
                    |> Enum.map(&(elem(&1, 0)))
                    |> Enum.max()
-    Logger.info("Updating version #{inspect last_version}")
-    Enum.reduce(db_item.changes, %Iris.Aggregate.Channel{id: db_item.id}, &apply_change/2)
+    db_item.changes
+    |> Enum.reduce(%Iris.Aggregate.Channel{id: db_item.id},
+      fn {version, event}, acc ->
+        apply_change(event, acc)
+        |> update_version(version)
+      end
+    )
     |> Map.put(:last_version, last_version)
   end
 
@@ -115,6 +120,15 @@ defmodule Iris.Aggregate.Channel do
 
   defp apply_change(_, acc) do
     acc
+  end
+
+  defp update_version(channel, version) do
+    cond do
+      channel.last_version < version ->
+        %{channel | version: version}
+      true ->
+        channel
+    end
   end
 
   defp append_events([], channel) do

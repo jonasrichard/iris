@@ -13,8 +13,8 @@ defmodule Iris.App do
     end
 
     #Rexbug.start("KafkaEx.NetworkClient.create_socket/4 :: return;stack")
-    Rexbug.start("Iris.Aggregate.Channel.to_channel/1", msgs: 100)
-    #RexBug.start("KafkaEx.Server0P10AndLater.init/1")
+    #Rexbug.start("Iris.Aggregate.Channel.to_channel/1", msgs: 100)
+    #RexBug.start("Iris.Fixture.retry/2")
 
     children =
       case Application.fetch_env!(:iris, :database_type) do

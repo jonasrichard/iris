@@ -58,7 +58,7 @@ defmodule Iris.Cassandra do
         "INSERT INTO iris.channel (id, version, change) VALUES ('#{id}', #{version}, '#{change_json}')"
 
       {:ok, result} = Iris.Cassandra.query(cmd)
-      Logger.info("channel write: #{inspect(result)}")
+      #Logger.info("channel write: #{inspect(result)}")
     end
   end
 
@@ -115,7 +115,7 @@ defmodule Iris.Cassandra do
         INSERT INTO iris.inbox (user_id, channel_id, last_user_id, last_message, last_ts) VALUES
           ('#{user_id}', '#{channel_id}', '#{last_user_id}', '#{last_message}', '#{last_ts}')
       """
-      Logger.info("#{cmd}")
+      #Logger.info("#{cmd}")
       {:ok, _} = Iris.Cassandra.query(cmd)
     end
 

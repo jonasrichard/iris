@@ -5,8 +5,6 @@ defmodule Iris.Test.Acceptance.ChannelCreation do
     create_channel =
       Iris.Command.CreateChannel.new("Three amigos", "u1", ["u1", "u2", "u3"], "Hey guys")
 
-    # send_message = Iris.Command.SendMessage.new("u2", create_channel.id, "Hey, whats up?")
-
     create_channel |> Iris.CommandDispatcher.send()
 
     # check both inboxes
