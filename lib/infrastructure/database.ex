@@ -6,6 +6,11 @@ defmodule Iris.Database do
     Iris.Cassandra.Inbox.create_table()
   end
 
+  # In case of more event sourced data, we need to have a selector here
+  def append_changes(id, event, version) do
+    Iris.Database.Channel.write!(id, version, event)
+  end
+
   defmodule Channel do
     defstruct [:id, :changes]
 

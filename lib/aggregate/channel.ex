@@ -136,12 +136,15 @@ defmodule Iris.Aggregate.Channel do
     end
   end
 
-  defp append_events([], channel) do
-    channel
+  defp append_event(event, channel) do
+    append_events([event], channel)
   end
 
-  defp append_events([event | rest], channel) do
-    append_events(rest, append_event(event, channel))
+  defp append_events(events, channel) do
+    changes = events
+              |> Enum.zip(1..length(events))
+              |> Enum.map(fn {event, i} -> {event, i + channel.last_version} end)
+    {:ok, {:channel, channel.id, changes}}
   end
 
   # append_event

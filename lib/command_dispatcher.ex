@@ -32,8 +32,27 @@ defmodule Iris.CommandDispatcher do
 
     Logger.info("Calling #{module} :handle with #{inspect(command)}")
 
-    apply(module, :handle, [command])
+    case apply(module, :handle, [command]) do
+      {:ok, {type, id, changes}} ->
+        # append event to event store
+        process_changes(type, id, changes)
+        _partition = Iris.Util.uuid_to_partition(id)
+        for {event, _} <- changes do
+          Iris.EventDispatcher.dispatch(0, event)
+        end
+      {:error, reason} ->
+        # command has been rejected
+        # different gen_server reply
+        nil
+        Logger.error("#{inspect(reason)}")
+    end
 
     {:reply, :ok, state}
+  end
+
+  defp process_changes(:channel, id, changes) do
+    for {event, version} <- changes do
+      Iris.Database.append_changes(id, event, version)
+    end
   end
 end
