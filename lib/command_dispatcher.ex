@@ -3,6 +3,8 @@ defmodule Iris.CommandDispatcher do
 
   require Logger
 
+  # TODO make versioned change type
+
   def start_link(params \\ []) do
     GenServer.start_link(__MODULE__, params, name: __MODULE__)
   end
@@ -42,7 +44,7 @@ defmodule Iris.CommandDispatcher do
         end
       {:error, reason} ->
         # command has been rejected
-        # different gen_server reply
+        # TODO different gen_server reply
         nil
         Logger.error("#{inspect(reason)}")
     end

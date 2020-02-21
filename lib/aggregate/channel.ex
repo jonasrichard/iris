@@ -146,18 +146,4 @@ defmodule Iris.Aggregate.Channel do
               |> Enum.map(fn {event, i} -> {event, i + channel.last_version} end)
     {:ok, {:channel, channel.id, changes}}
   end
-
-  # append_event
-  #   1. Write the new event to the event store
-  #   2. Dispatch the event
-  #   3. Apply the change/event to the aggregate
-  defp append_event(event, channel) do
-    new_version = channel.last_version + 1
-    Iris.Database.Channel.write!(channel.id, new_version, event)
-    _partition = Iris.Util.uuid_to_partition(channel.id)
-    Iris.EventDispatcher.dispatch(0, event)
-    apply_change(event, Map.put(channel, :last_version, new_version))
-  end
-
-  # TODO implement the uncommitted changes part!
 end
